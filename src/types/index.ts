@@ -43,7 +43,6 @@ export interface MediaItem {
   category: MediaCategory
   url: string
   thumbnail_url: string | null
-  // For gratitude videos — links to a specific donor
   dedicated_to_donor_id: string | null
   dedicated_to_name: string | null
   location: string | null
@@ -61,8 +60,8 @@ export interface TimelineEntry {
   description: string
   date: string
   location: string | null
-  media_ids: string[]  // references MediaItem ids
-  impact_metric: string | null  // e.g. "Fed 200 families"
+  media_ids: string[]
+  impact_metric: string | null
   is_published: boolean
   created_at: string
 }
@@ -71,22 +70,31 @@ export interface TimelineEntry {
 
 export type ProductStatus = 'active' | 'draft' | 'sold_out' | 'archived'
 
+export interface ProductImage {
+  url: string
+  label: string | null   // e.g. "Red colorway", "Front view"
+}
+
 export interface ProductVariant {
-  type: string           // e.g. "Size", "Color"
-  value: string          // e.g. "M", "Red"
-  stock_quantity: number | null
+  type: string                        // e.g. "Size", "Color", "Material"
+  value: string                       // e.g. "M", "Red", "Cotton"
+  stock_quantity: number | null       // null = unlimited
+  price_override_cents: number | null // e.g. +200 = base + $2; negative allowed
+  sku: string | null
 }
 
 export interface Product {
   id: string
   name: string
-  description: string
+  short_description: string           // 1-2 sentences shown on product card
+  description: string                 // full description shown in product detail
   price_cents: number
   currency: string
-  images: string[]
+  images: ProductImage[]
   category: string | null
-  stock_quantity: number | null   // used only for products with no variants
+  stock_quantity: number | null       // used only when variants is empty
   variants: ProductVariant[]
+  weight_note: string | null          // admin-only shipping/weight notes
   stripe_product_id: string | null
   stripe_price_id: string | null
   status: ProductStatus
@@ -109,8 +117,9 @@ export interface Order {
 export interface OrderItem {
   product_id: string
   product_name: string
+  variant_label: string | null
   quantity: number
-  price_cents: number
+  price_cents: number  // effective price at time of order
 }
 
 export interface ShippingAddress {
@@ -126,7 +135,7 @@ export interface ShippingAddress {
 
 export interface SiteContent {
   id: string
-  key: string            // e.g. 'hero_headline', 'about_body', 'mission_statement'
+  key: string
   value: string
   content_type: 'text' | 'html' | 'markdown'
   last_updated_by: string | null
@@ -143,7 +152,7 @@ export interface GratitudeVideo {
   message: string | null
   from_location: string | null
   dedicated_to_donor_id: string | null
-  dedicated_to_name: string | null    // shown publicly
+  dedicated_to_name: string | null
   is_published: boolean
   created_at: string
 }
