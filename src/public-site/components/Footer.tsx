@@ -17,15 +17,23 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <svg width="13" height="17" viewBox="0 0 13 17" fill="none" aria-hidden="true" className="shrink-0">
-                <polygon points="0,0 13,8.5 0,17" fill="#ce1126"/>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true" className="shrink-0">
+                <defs>
+                  <clipPath id="logo-ring-footer">
+                    <path clipRule="evenodd" d="M16 1C7.716 1 1 7.716 1 16s6.716 15 15 15 15-6.716 15-15S24.284 1 16 1zm0 8c-3.866 0-7 3.134-7 7s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7z"/>
+                  </clipPath>
+                </defs>
+                <rect x="0" y="0" width="32" height="10.7" fill="#ce1126" clipPath="url(#logo-ring-footer)"/>
+                <rect x="0" y="10.7" width="32" height="10.6" fill="rgba(255,255,255,0.85)" clipPath="url(#logo-ring-footer)"/>
+                <rect x="0" y="21.3" width="32" height="10.7" fill="#007a3d" clipPath="url(#logo-ring-footer)"/>
+                <circle cx="16" cy="16" r="7" fill="#0a0a0a"/>
               </svg>
               <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-base font-bold text-chalk uppercase tracking-wide leading-none">SURDAWIA</span>
-                  <span className="font-sans text-[11px] text-chalk/55 font-normal">MEND Initiative</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-xl font-bold text-chalk uppercase tracking-wide leading-none">SURDAWIA</span>
+                  <span className="font-sans text-sm text-chalk/60 font-normal">| MEND Initiative</span>
                 </div>
-                <p className="font-serif text-[10px] text-chalk/30 italic leading-tight mt-0.5">Mending Hearts Through Simple Acts</p>
+                <p className="font-serif text-xs text-chalk/40 italic leading-tight mt-0.5">Mending Hearts Through Simple Acts</p>
               </div>
             </div>
             <p className="font-sans text-sm text-white/40 leading-relaxed">

@@ -36,13 +36,21 @@ export default function AdminNav() {
       {/* Brand */}
       <div className="px-5 py-5 border-b border-white/8">
         <div className="flex items-center gap-3">
-          <svg width="11" height="15" viewBox="0 0 11 15" fill="none" aria-hidden="true" className="shrink-0">
-            <polygon points="0,0 11,7.5 0,15" fill="#ce1126"/>
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true" className="shrink-0">
+            <defs>
+              <clipPath id="logo-ring-admin">
+                <path clipRule="evenodd" d="M16 1C7.716 1 1 7.716 1 16s6.716 15 15 15 15-6.716 15-15S24.284 1 16 1zm0 8c-3.866 0-7 3.134-7 7s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7z"/>
+              </clipPath>
+            </defs>
+            <rect x="0" y="0" width="32" height="10.7" fill="#ce1126" clipPath="url(#logo-ring-admin)"/>
+            <rect x="0" y="10.7" width="32" height="10.6" fill="rgba(255,255,255,0.8)" clipPath="url(#logo-ring-admin)"/>
+            <rect x="0" y="21.3" width="32" height="10.7" fill="#007a3d" clipPath="url(#logo-ring-admin)"/>
+            <circle cx="16" cy="16" r="7" fill="#0a0a0a"/>
           </svg>
           <div>
-            <div className="flex items-baseline gap-1.5">
-              <p className="font-display text-sm font-bold text-chalk uppercase tracking-wide leading-tight">SURDAWIA</p>
-              <p className="font-sans text-[10px] text-chalk/45 font-normal">MEND</p>
+            <div className="flex items-center gap-1.5">
+              <p className="font-display text-base font-bold text-chalk uppercase tracking-wide leading-tight">SURDAWIA</p>
+              <p className="font-sans text-xs text-chalk/50 font-normal">| MEND</p>
             </div>
             <p className="font-sans text-xs text-white/35">Admin Portal</p>
           </div>
