@@ -26,13 +26,16 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-5 flex items-center justify-between h-16">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-full border border-white/15 bg-white/5 flex items-center justify-center transition group-hover:border-red/40">
-            <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
-              <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.8"/>
-              <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+          <svg width="13" height="17" viewBox="0 0 13 17" fill="none" aria-hidden="true" className="shrink-0 transition-transform group-hover:scale-110">
+            <polygon points="0,0 13,8.5 0,17" fill="#ce1126"/>
+          </svg>
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-base font-bold text-chalk uppercase tracking-wide leading-none">SURDAWIA</span>
+              <span className="font-sans text-[11px] text-chalk/55 font-normal">MEND Initiative</span>
+            </div>
+            <p className="font-serif text-[10px] text-chalk/30 italic leading-tight mt-0.5">Mending Hearts Through Simple Acts</p>
           </div>
-          <span className="font-display text-base text-chalk tracking-tight">Relief Org</span>
         </Link>
 
         {/* Desktop nav */}

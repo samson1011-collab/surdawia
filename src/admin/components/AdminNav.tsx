@@ -36,14 +36,14 @@ export default function AdminNav() {
       {/* Brand */}
       <div className="px-5 py-5 border-b border-white/8">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full border border-white/15 bg-white/5 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
-              <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.7"/>
-              <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+          <svg width="11" height="15" viewBox="0 0 11 15" fill="none" aria-hidden="true" className="shrink-0">
+            <polygon points="0,0 11,7.5 0,15" fill="#ce1126"/>
+          </svg>
           <div>
-            <p className="font-display text-sm text-chalk leading-tight">Relief Org</p>
+            <div className="flex items-baseline gap-1.5">
+              <p className="font-display text-sm font-bold text-chalk uppercase tracking-wide leading-tight">SURDAWIA</p>
+              <p className="font-sans text-[10px] text-chalk/45 font-normal">MEND</p>
+            </div>
             <p className="font-sans text-xs text-white/35">Admin Portal</p>
           </div>
         </div>

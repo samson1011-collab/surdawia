@@ -17,13 +17,16 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full border border-white/15 bg-white/5 flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
-                  <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.8"/>
-                  <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              <svg width="13" height="17" viewBox="0 0 13 17" fill="none" aria-hidden="true" className="shrink-0">
+                <polygon points="0,0 13,8.5 0,17" fill="#ce1126"/>
+              </svg>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-base font-bold text-chalk uppercase tracking-wide leading-none">SURDAWIA</span>
+                  <span className="font-sans text-[11px] text-chalk/55 font-normal">MEND Initiative</span>
+                </div>
+                <p className="font-serif text-[10px] text-chalk/30 italic leading-tight mt-0.5">Mending Hearts Through Simple Acts</p>
               </div>
-              <span className="font-display text-base text-chalk">Relief Org</span>
             </div>
             <p className="font-sans text-sm text-white/40 leading-relaxed">
               Every dollar goes directly to families in need. 100% of store proceeds fund relief work on the ground.
@@ -68,7 +71,7 @@ export default function Footer() {
 
         <div className="mt-12 pt-6 border-t border-white/8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="font-sans text-xs text-white/25">
-            © {new Date().getFullYear()} Relief Org. All proceeds support humanitarian relief.
+            © {new Date().getFullYear()} Surdawia — MEND Initiative. All proceeds support humanitarian relief.
           </p>
           <p className="font-sans text-xs text-white/20">
             Built with care for those who need it most.
