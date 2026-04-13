@@ -88,6 +88,16 @@ function colorToCss(name: string): string {
   return COLOR_MAP[name.toLowerCase().trim()] ?? '#9ca3af'
 }
 
+/** Returns true if a CSS hex color is very light (perceived brightness > 220). */
+function isLightColor(cssHex: string): boolean {
+  const hex = cssHex.replace('#', '')
+  if (hex.length !== 6) return false
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 > 220
+}
+
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
@@ -154,6 +164,13 @@ export default function Store() {
   function selectDetailVariant(type: string, value: string) {
     setDetailVariants(prev => ({ ...prev, [type]: value }))
     setDetailQty(1)
+    // Sync image gallery when a Color variant is selected
+    if (type.toLowerCase() === 'color' && detailProduct) {
+      const matchIdx = detailProduct.images.findIndex(
+        img => img.label?.toLowerCase() === value.toLowerCase()
+      )
+      if (matchIdx !== -1) setDetailImageIdx(matchIdx)
+    }
   }
 
   const detailVariantGroups   = detailProduct ? groupVariants(detailProduct.variants ?? []) : {}
@@ -401,7 +418,16 @@ export default function Store() {
                   {detailProduct.images.map((img, i) => (
                     <button
                       key={i}
-                      onClick={e => { e.stopPropagation(); setDetailImageIdx(i) }}
+                      onClick={e => {
+                        e.stopPropagation()
+                        setDetailImageIdx(i)
+                        // If this image's label matches a Color variant, auto-select it
+                        if (img.label && detailProduct) {
+                          const colorVariants = (detailProduct.variants ?? []).filter(v => v.type.toLowerCase() === 'color')
+                          const match = colorVariants.find(v => v.value.toLowerCase() === img.label!.toLowerCase())
+                          if (match) setDetailVariants(prev => ({ ...prev, [match.type]: match.value }))
+                        }
+                      }}
                       className={`w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${i === detailImageIdx ? 'border-rouge' : 'border-transparent hover:border-black/20'}`}
                     >
                       <img src={img.url} alt={img.label ?? ''} className="w-full h-full object-cover" />
@@ -454,9 +480,12 @@ export default function Store() {
                                 disabled={outOfStock}
                                 onClick={e => { e.stopPropagation(); selectDetailVariant(type, v.value) }}
                                 title={isColor ? v.value : undefined}
-                                className={`font-sans text-sm transition-colors ${
+                                className={`font-sans text-sm transition-all ${
                                   isColor
-                                    ? `w-8 h-8 rounded-full border-4 ${isSelected ? 'border-ink' : outOfStock ? 'border-transparent opacity-30 cursor-not-allowed' : 'border-transparent hover:border-black/30'}`
+                                    ? `w-8 h-8 rounded-full border-2
+                                       ${isLightColor(colorToCss(v.value)) ? 'border-black/20' : 'border-transparent'}
+                                       ${isSelected ? 'ring-2 ring-ink ring-offset-1' : ''}
+                                       ${outOfStock ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80'}`
                                     : `px-3.5 py-1.5 rounded-lg border ${
                                         isSelected
                                           ? 'bg-ink text-chalk border-ink'
