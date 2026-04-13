@@ -406,36 +406,40 @@ export default function StoreManager() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <input
-                    value={variantDraft.type}
-                    onChange={e => setVariantDraft(d => ({ ...d, type: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && addVariant()}
-                    className="flex-1 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
-                    placeholder="Type (e.g. Size)"
-                  />
-                  <input
-                    value={variantDraft.value}
-                    onChange={e => setVariantDraft(d => ({ ...d, value: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && addVariant()}
-                    className="flex-1 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
-                    placeholder="Value (e.g. M)"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    value={variantDraft.stock}
-                    onChange={e => setVariantDraft(d => ({ ...d, stock: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && addVariant()}
-                    className="w-20 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
-                    placeholder="Stock"
-                  />
-                  <button
-                    onClick={addVariant}
-                    className="bg-ink text-chalk font-sans text-sm px-3 py-2 rounded-lg hover:bg-ink-mid transition-colors shrink-0"
-                  >
-                    Add
-                  </button>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={variantDraft.type}
+                      onChange={e => setVariantDraft(d => ({ ...d, type: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && addVariant()}
+                      className="border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                      placeholder="Type (e.g. Size)"
+                    />
+                    <input
+                      value={variantDraft.value}
+                      onChange={e => setVariantDraft(d => ({ ...d, value: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && addVariant()}
+                      className="border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                      placeholder="Value (e.g. M)"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={variantDraft.stock}
+                      onChange={e => setVariantDraft(d => ({ ...d, stock: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && addVariant()}
+                      className="flex-1 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                      placeholder="Stock (blank = unlimited)"
+                    />
+                    <button
+                      onClick={addVariant}
+                      className="bg-ink text-chalk font-sans text-sm px-4 py-2 rounded-lg hover:bg-ink-mid transition-colors shrink-0"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
               </div>
 
