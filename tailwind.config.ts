@@ -20,6 +20,19 @@ const config: Config = {
           pale:     '#d4f0e0',
           deep:     '#005c2e',
         },
+        // ── Aliases used throughout the codebase ─────────────────────
+        rouge: {
+          DEFAULT: '#CE1126',
+          light:   '#e63347',
+          pale:    '#fde8ea',
+          deep:    '#a50d1e',
+        },
+        forest: {
+          DEFAULT: '#007A3D',
+          light:   '#009e50',
+          pale:    '#d4f0e0',
+          deep:    '#005c2e',
+        },
         ink: {
           DEFAULT:  '#0a0a0a',
           mid:      '#1a1a1a',
