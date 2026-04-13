@@ -491,7 +491,7 @@ export default function Store() {
       {detailProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/50" onClick={() => setDetailProduct(null)} />
-          <div className="relative bg-chalk rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
+          <div className="relative bg-chalk rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92dvh] md:max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
 
             {/* Close button */}
             <button
@@ -503,8 +503,8 @@ export default function Store() {
 
             {/* ── Image gallery (left) ── */}
             <div className="md:w-2/5 bg-black/5 flex flex-col shrink-0">
-              {/* Main image */}
-              <div className="relative flex-1 min-h-[260px] md:min-h-0">
+              {/* Main image — compact fixed height on mobile */}
+              <div className="relative h-52 md:h-auto md:flex-1">
                 {detailProduct.images?.[detailImageIdx] ? (
                   <img
                     src={detailProduct.images[detailImageIdx].url}
@@ -545,9 +545,9 @@ export default function Store() {
                 )}
               </div>
 
-              {/* Thumbnails */}
+              {/* Thumbnails — desktop only (too much vertical space on mobile) */}
               {detailProduct.images.length > 1 && (
-                <div className="flex gap-2 p-3 overflow-x-auto border-t border-black/8">
+                <div className="hidden md:flex gap-2 p-3 overflow-x-auto border-t border-black/8">
                   {detailProduct.images.map((img, i) => (
                     <button
                       key={i}
@@ -571,8 +571,9 @@ export default function Store() {
             </div>
 
             {/* ── Product info (right) ── */}
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              <div className="p-6 md:p-8 flex flex-col flex-1">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              {/* Scrollable body: name, description, variants */}
+              <div className="flex-1 overflow-y-auto p-5 md:p-8">
 
                 {/* Category */}
                 {detailProduct.category && (
@@ -639,32 +640,31 @@ export default function Store() {
                   </div>
                 )}
 
-                {/* Stock indicator */}
-                {showStockIndicator && (
-                  <div className="mb-4">
+              </div>{/* end scrollable body */}
+
+              {/* ── Sticky purchase footer — always visible ── */}
+              <div className="shrink-0 border-t border-black/8 bg-chalk px-5 py-4 md:px-8 md:py-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-display text-2xl text-ink">
+                    {hasDetailVariants && allDetailTypesSelected
+                      ? formatPrice(detailEffectivePrice)
+                      : (() => {
+                          const r = getPriceRange(detailProduct)
+                          return r.min === r.max ? formatPrice(r.min) : `From ${formatPrice(r.min)}`
+                        })()
+                    }
+                  </p>
+                  {showStockIndicator && (
                     <StockIndicator stock={detailProduct.status === 'sold_out' ? 0 : detailStock} />
-                  </div>
-                )}
-
-                {/* Price */}
-                <p className="font-display text-2xl text-ink mb-6">
-                  {hasDetailVariants && allDetailTypesSelected
-                    ? formatPrice(detailEffectivePrice)
-                    : (() => {
-                        const r = getPriceRange(detailProduct)
-                        return r.min === r.max ? formatPrice(r.min) : `From ${formatPrice(r.min)}`
-                      })()
-                  }
-                </p>
-
-                {/* Qty selector + Add to Cart */}
-                <div className="flex items-center gap-3 mt-auto">
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
                   {/* Quantity */}
                   <div className="flex items-center border border-black/15 rounded-lg overflow-hidden shrink-0">
                     <button
                       onClick={e => { e.stopPropagation(); setDetailQty(q => Math.max(1, q - 1)) }}
                       disabled={detailQty <= 1}
-                      className="px-3 py-2.5 text-ink/50 hover:text-ink disabled:opacity-20 transition-colors"
+                      className="px-3 py-3 text-ink/50 hover:text-ink disabled:opacity-20 transition-colors min-w-[44px] flex items-center justify-center"
                     >
                       <Minus size={14} />
                     </button>
@@ -672,17 +672,16 @@ export default function Store() {
                     <button
                       onClick={e => { e.stopPropagation(); setDetailQty(q => Math.min(maxQty, q + 1)) }}
                       disabled={detailQty >= maxQty || isDetailSoldOut}
-                      className="px-3 py-2.5 text-ink/50 hover:text-ink disabled:opacity-20 transition-colors"
+                      className="px-3 py-3 text-ink/50 hover:text-ink disabled:opacity-20 transition-colors min-w-[44px] flex items-center justify-center"
                     >
                       <Plus size={14} />
                     </button>
                   </div>
-
                   {/* Add to Cart */}
                   <button
                     onClick={e => { e.stopPropagation(); addDetailToCart() }}
                     disabled={!canAddToCart}
-                    className="flex-1 bg-rouge hover:bg-rouge-light disabled:opacity-40 disabled:cursor-not-allowed text-chalk font-sans font-medium text-sm py-2.5 rounded-lg transition-colors"
+                    className="flex-1 bg-rouge hover:bg-rouge-light disabled:opacity-40 disabled:cursor-not-allowed text-chalk font-sans font-medium text-sm py-3 rounded-lg transition-colors min-h-[44px]"
                   >
                     {isDetailSoldOut
                       ? 'Sold Out'
