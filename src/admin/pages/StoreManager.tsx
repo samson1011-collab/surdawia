@@ -43,6 +43,7 @@ export default function StoreManager() {
   const [form, setForm] = useState(emptyForm)
   const [imageInput, setImageInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function openCreate() {
@@ -75,6 +76,27 @@ export default function StoreManager() {
 
   function removeImage(i: number) {
     setForm(f => ({ ...f, images: f.images.filter((_, idx) => idx !== i) }))
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setUploading(true)
+    setError(null)
+    const ext = file.name.split('.').pop()
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(path, file, { contentType: file.type })
+    if (uploadError) {
+      setError(uploadError.message)
+      setUploading(false)
+      return
+    }
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+    setForm(f => ({ ...f, images: [...f.images, data.publicUrl] }))
+    setUploading(false)
   }
 
   async function handleSave() {
@@ -314,19 +336,40 @@ export default function StoreManager() {
 
               {/* Images */}
               <div>
-                <label className="block font-sans text-xs text-ink/50 uppercase tracking-widest mb-1.5">Image URLs</label>
+                <label className="block font-sans text-xs text-ink/50 uppercase tracking-widest mb-1.5">Images</label>
+
+                {/* File upload */}
+                <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed rounded-lg px-4 py-4 mb-2 cursor-pointer transition-colors ${uploading ? 'border-black/10 bg-black/[0.02]' : 'border-black/15 hover:border-rouge/40 hover:bg-rouge/[0.02]'}`}>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="sr-only"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                  {uploading ? (
+                    <span className="font-sans text-sm text-ink/40">Uploading…</span>
+                  ) : (
+                    <span className="font-sans text-sm text-ink/50">
+                      <span className="text-rouge font-medium">Choose a file</span> or drag here — PNG or JPEG
+                    </span>
+                  )}
+                </label>
+
+                {/* URL fallback */}
                 <div className="flex gap-2 mb-2">
                   <input
                     value={imageInput}
                     onChange={e => setImageInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addImage()}
                     className="flex-1 border border-black/15 rounded-lg px-3 py-2.5 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
-                    placeholder="https://..."
+                    placeholder="Or paste image URL…"
                   />
                   <button onClick={addImage} className="bg-ink text-chalk font-sans text-sm px-3 py-2 rounded-lg hover:bg-ink-mid transition-colors">
                     Add
                   </button>
                 </div>
+
                 {form.images.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {form.images.map((url, i) => (
