@@ -40,7 +40,6 @@ export default function Navbar() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display text-xl font-bold text-chalk uppercase tracking-wide leading-none">SURDAWIA</span>
-              <span className="font-sans text-sm text-chalk/60 font-normal">| MEND Initiative</span>
             </div>
             <p className="font-serif text-xs text-chalk/40 italic leading-tight mt-0.5">Healing Hearts Through Simple Acts</p>
           </div>

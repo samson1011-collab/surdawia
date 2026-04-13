@@ -50,7 +50,6 @@ export default function AdminNav() {
           <div>
             <div className="flex items-center gap-1.5">
               <p className="font-display text-base font-bold text-chalk uppercase tracking-wide leading-tight">SURDAWIA</p>
-              <p className="font-sans text-xs text-chalk/50 font-normal">| MEND</p>
             </div>
             <p className="font-sans text-xs text-white/35">Admin Portal</p>
           </div>
