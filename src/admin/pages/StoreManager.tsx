@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, X, Package, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { Product } from '@/types'
+import type { Product, ProductVariant } from '@/types'
 
 function useProducts() {
   return useQuery({
@@ -33,7 +33,10 @@ const emptyForm = {
   name: '', description: '', price_cents: 0, category: '',
   images: [] as string[], stock_quantity: null as number | null,
   status: 'draft' as Product['status'], sort_order: 0,
+  variants: [] as ProductVariant[],
 }
+
+const emptyVariantDraft = { type: '', value: '', stock: '' }
 
 export default function StoreManager() {
   const qc = useQueryClient()
@@ -42,6 +45,7 @@ export default function StoreManager() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [imageInput, setImageInput] = useState('')
+  const [variantDraft, setVariantDraft] = useState(emptyVariantDraft)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +54,7 @@ export default function StoreManager() {
     setEditing(null)
     setForm(emptyForm)
     setImageInput('')
+    setVariantDraft(emptyVariantDraft)
     setError(null)
     setShowForm(true)
   }
@@ -61,8 +66,10 @@ export default function StoreManager() {
       price_cents: p.price_cents, category: p.category ?? '',
       images: p.images, stock_quantity: p.stock_quantity,
       status: p.status, sort_order: p.sort_order,
+      variants: p.variants ?? [],
     })
     setImageInput('')
+    setVariantDraft(emptyVariantDraft)
     setError(null)
     setShowForm(true)
   }
@@ -99,6 +106,24 @@ export default function StoreManager() {
     setUploading(false)
   }
 
+  function addVariant() {
+    if (!variantDraft.type.trim() || !variantDraft.value.trim()) return
+    const stock = variantDraft.stock === '' ? null : parseInt(variantDraft.stock)
+    setForm(f => ({
+      ...f,
+      variants: [...f.variants, {
+        type: variantDraft.type.trim(),
+        value: variantDraft.value.trim(),
+        stock_quantity: isNaN(stock as number) ? null : stock,
+      }],
+    }))
+    setVariantDraft(emptyVariantDraft)
+  }
+
+  function removeVariant(i: number) {
+    setForm(f => ({ ...f, variants: f.variants.filter((_, idx) => idx !== i) }))
+  }
+
   async function handleSave() {
     if (!form.name.trim()) { setError('Name is required.'); return }
     if (!form.price_cents || form.price_cents <= 0) { setError('Price must be greater than 0.'); return }
@@ -110,7 +135,8 @@ export default function StoreManager() {
       price_cents: form.price_cents,
       category: form.category.trim() || null,
       images: form.images,
-      stock_quantity: form.stock_quantity,
+      stock_quantity: form.variants.length > 0 ? null : form.stock_quantity,
+      variants: form.variants,
       status: form.status,
       sort_order: form.sort_order,
     }
@@ -210,7 +236,10 @@ export default function StoreManager() {
                   </td>
                   <td className="px-5 py-4 font-sans text-sm text-ink">{formatPrice(p.price_cents)}</td>
                   <td className="px-5 py-4 font-sans text-sm text-ink/60">
-                    {p.stock_quantity === null ? '∞' : p.stock_quantity}
+                    {p.variants?.length > 0
+                      ? <span className="font-sans text-xs text-ink/40">{p.variants.length} variants</span>
+                      : p.stock_quantity === null ? '∞' : p.stock_quantity
+                    }
                   </td>
                   <td className="px-5 py-4">
                     <span className={`font-sans text-xs px-2.5 py-1 rounded-full font-medium capitalize ${STATUS_COLORS[p.status]}`}>
@@ -250,7 +279,7 @@ export default function StoreManager() {
           <div className="absolute inset-0 bg-ink/40" onClick={() => setShowForm(false)} />
           <div className="relative bg-chalk rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
-            <div className="flex items-center justify-between px-6 py-4 border-b border-black/8 sticky top-0 bg-chalk">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-black/8 sticky top-0 bg-chalk z-10">
               <h2 className="font-display text-lg text-ink">{editing ? 'Edit Product' : 'New Product'}</h2>
               <button onClick={() => setShowForm(false)} className="p-1 text-ink/40 hover:text-ink transition-colors">
                 <X size={18} />
@@ -297,13 +326,16 @@ export default function StoreManager() {
                   />
                 </div>
                 <div>
-                  <label className="block font-sans text-xs text-ink/50 uppercase tracking-widest mb-1.5">Stock (blank = unlimited)</label>
+                  <label className="block font-sans text-xs text-ink/50 uppercase tracking-widest mb-1.5">
+                    Stock{form.variants.length > 0 ? ' — overridden by variants' : ' (blank = unlimited)'}
+                  </label>
                   <input
                     type="number"
                     min="0"
                     value={form.stock_quantity ?? ''}
+                    disabled={form.variants.length > 0}
                     onChange={e => setForm(f => ({ ...f, stock_quantity: e.target.value === '' ? null : parseInt(e.target.value) }))}
-                    className="w-full border border-black/15 rounded-lg px-3 py-2.5 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                    className="w-full border border-black/15 rounded-lg px-3 py-2.5 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40 disabled:opacity-40 disabled:cursor-not-allowed"
                     placeholder="Unlimited"
                   />
                 </div>
@@ -331,6 +363,79 @@ export default function StoreManager() {
                     <option value="sold_out">Sold Out</option>
                     <option value="archived">Archived</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Variants */}
+              <div>
+                <label className="block font-sans text-xs text-ink/50 uppercase tracking-widest mb-1.5">
+                  Variants <span className="normal-case font-normal text-ink/30">— sizes, colors, etc. (optional)</span>
+                </label>
+
+                {form.variants.length > 0 && (
+                  <div className="border border-black/10 rounded-lg overflow-hidden mb-2">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-black/[0.02] border-b border-black/8">
+                          <th className="text-left font-sans text-xs text-ink/40 px-3 py-2">Type</th>
+                          <th className="text-left font-sans text-xs text-ink/40 px-3 py-2">Value</th>
+                          <th className="text-left font-sans text-xs text-ink/40 px-3 py-2">Stock</th>
+                          <th className="w-8 px-3 py-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {form.variants.map((v, i) => (
+                          <tr key={i} className="border-b border-black/5 last:border-0">
+                            <td className="px-3 py-2 font-sans text-sm text-ink">{v.type}</td>
+                            <td className="px-3 py-2 font-sans text-sm text-ink">{v.value}</td>
+                            <td className="px-3 py-2 font-sans text-sm text-ink/50">
+                              {v.stock_quantity === null ? '∞' : v.stock_quantity}
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                onClick={() => removeVariant(i)}
+                                className="text-ink/30 hover:text-rouge transition-colors"
+                              >
+                                <X size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    value={variantDraft.type}
+                    onChange={e => setVariantDraft(d => ({ ...d, type: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && addVariant()}
+                    className="flex-1 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                    placeholder="Type (e.g. Size)"
+                  />
+                  <input
+                    value={variantDraft.value}
+                    onChange={e => setVariantDraft(d => ({ ...d, value: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && addVariant()}
+                    className="flex-1 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                    placeholder="Value (e.g. M)"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={variantDraft.stock}
+                    onChange={e => setVariantDraft(d => ({ ...d, stock: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && addVariant()}
+                    className="w-20 border border-black/15 rounded-lg px-3 py-2 font-sans text-sm text-ink focus:outline-none focus:ring-1 focus:ring-rouge/40"
+                    placeholder="Stock"
+                  />
+                  <button
+                    onClick={addVariant}
+                    className="bg-ink text-chalk font-sans text-sm px-3 py-2 rounded-lg hover:bg-ink-mid transition-colors shrink-0"
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
 

@@ -71,6 +71,12 @@ export interface TimelineEntry {
 
 export type ProductStatus = 'active' | 'draft' | 'sold_out' | 'archived'
 
+export interface ProductVariant {
+  type: string           // e.g. "Size", "Color"
+  value: string          // e.g. "M", "Red"
+  stock_quantity: number | null
+}
+
 export interface Product {
   id: string
   name: string
@@ -79,7 +85,8 @@ export interface Product {
   currency: string
   images: string[]
   category: string | null
-  stock_quantity: number | null
+  stock_quantity: number | null   // used only for products with no variants
+  variants: ProductVariant[]
   stripe_product_id: string | null
   stripe_price_id: string | null
   status: ProductStatus

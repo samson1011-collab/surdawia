@@ -2,11 +2,25 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ShoppingCart, X, Plus, Minus, ArrowRight, Package } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { Product } from '@/types'
+import type { Product, ProductVariant } from '@/types'
 
 interface CartItem {
   product: Product
   quantity: number
+  selectedVariants: Record<string, string>  // { Size: 'M', Color: 'Red' }
+}
+
+function cartKey(productId: string, variants: Record<string, string>) {
+  const sorted = Object.entries(variants).sort(([a], [b]) => a.localeCompare(b))
+  return `${productId}:${sorted.map(([k, v]) => `${k}=${v}`).join(',')}`
+}
+
+function groupVariants(variants: ProductVariant[]) {
+  return variants.reduce((acc, v) => {
+    if (!acc[v.type]) acc[v.type] = []
+    acc[v.type].push(v)
+    return acc
+  }, {} as Record<string, ProductVariant[]>)
 }
 
 function useProducts() {
@@ -32,22 +46,37 @@ export default function Store() {
   const { data: products, isLoading } = useProducts()
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
+  // selectedVariants[productId][variantType] = variantValue
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, Record<string, string>>>({})
 
-  function addToCart(product: Product) {
+  function selectVariant(productId: string, type: string, value: string) {
+    setSelectedVariants(prev => ({
+      ...prev,
+      [productId]: { ...prev[productId], [type]: value },
+    }))
+  }
+
+  function addToCart(product: Product, variants: Record<string, string>) {
+    const key = cartKey(product.id, variants)
     setCart(prev => {
-      const existing = prev.find(i => i.product.id === product.id)
+      const existing = prev.find(i => cartKey(i.product.id, i.selectedVariants) === key)
       if (existing) {
-        return prev.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
+        return prev.map(i =>
+          cartKey(i.product.id, i.selectedVariants) === key
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
+        )
       }
-      return [...prev, { product, quantity: 1 }]
+      return [...prev, { product, quantity: 1, selectedVariants: variants }]
     })
     setCartOpen(true)
   }
 
-  function updateQty(productId: string, delta: number) {
-    setCart(prev => prev
-      .map(i => i.product.id === productId ? { ...i, quantity: i.quantity + delta } : i)
-      .filter(i => i.quantity > 0)
+  function updateQty(key: string, delta: number) {
+    setCart(prev =>
+      prev
+        .map(i => cartKey(i.product.id, i.selectedVariants) === key ? { ...i, quantity: i.quantity + delta } : i)
+        .filter(i => i.quantity > 0)
     )
   }
 
@@ -100,49 +129,90 @@ export default function Store() {
 
         {!isLoading && products && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map(product => (
-              <div key={product.id} className="bg-white rounded-2xl border border-black/8 overflow-hidden shadow-sm group flex flex-col">
-                {/* Image */}
-                <div className="relative bg-black/5 h-56 overflow-hidden">
-                  {product.images?.[0] ? (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package size={40} className="text-ink/20" />
-                    </div>
-                  )}
-                  {product.stock_quantity === 0 && (
-                    <div className="absolute inset-0 bg-ink/60 flex items-center justify-center">
-                      <span className="font-sans text-sm text-chalk font-medium bg-ink px-3 py-1 rounded-full">Sold Out</span>
-                    </div>
-                  )}
-                </div>
+            {products.map(product => {
+              const hasVariants = product.variants && product.variants.length > 0
+              const variantGroups = hasVariants ? groupVariants(product.variants) : {}
+              const sel = selectedVariants[product.id] ?? {}
+              const allTypesSelected = !hasVariants || Object.keys(variantGroups).every(type => !!sel[type])
+              const isSoldOut = !hasVariants && product.stock_quantity === 0
 
-                {/* Info */}
-                <div className="p-5 flex flex-col flex-1">
-                  {product.category && (
-                    <p className="font-sans text-xs text-rouge/70 uppercase tracking-widest mb-1">{product.category}</p>
-                  )}
-                  <h3 className="font-display text-lg text-ink mb-1">{product.name}</h3>
-                  <p className="font-sans text-sm text-ink/50 leading-relaxed flex-1 mb-4 line-clamp-2">{product.description}</p>
+              return (
+                <div key={product.id} className="bg-white rounded-2xl border border-black/8 overflow-hidden shadow-sm group flex flex-col">
+                  {/* Image */}
+                  <div className="relative bg-black/5 h-56 overflow-hidden">
+                    {product.images?.[0] ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package size={40} className="text-ink/20" />
+                      </div>
+                    )}
+                    {isSoldOut && (
+                      <div className="absolute inset-0 bg-ink/60 flex items-center justify-center">
+                        <span className="font-sans text-sm text-chalk font-medium bg-ink px-3 py-1 rounded-full">Sold Out</span>
+                      </div>
+                    )}
+                  </div>
 
-                  <div className="flex items-center justify-between mt-auto">
-                    <p className="font-display text-xl text-ink">{formatPrice(product.price_cents)}</p>
-                    <button
-                      onClick={() => addToCart(product)}
-                      disabled={product.stock_quantity === 0}
-                      className="bg-rouge hover:bg-rouge-light disabled:opacity-40 disabled:cursor-not-allowed text-chalk font-sans text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Add to Cart
-                    </button>
+                  {/* Info */}
+                  <div className="p-5 flex flex-col flex-1">
+                    {product.category && (
+                      <p className="font-sans text-xs text-rouge/70 uppercase tracking-widest mb-1">{product.category}</p>
+                    )}
+                    <h3 className="font-display text-lg text-ink mb-1">{product.name}</h3>
+                    <p className="font-sans text-sm text-ink/50 leading-relaxed mb-4 line-clamp-2">{product.description}</p>
+
+                    {/* Variant selectors */}
+                    {hasVariants && (
+                      <div className="space-y-3 mb-4">
+                        {Object.entries(variantGroups).map(([type, options]) => (
+                          <div key={type}>
+                            <p className="font-sans text-xs text-ink/40 uppercase tracking-widest mb-1.5">{type}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {options.map(v => {
+                                const outOfStock = v.stock_quantity === 0
+                                const isSelected = sel[type] === v.value
+                                return (
+                                  <button
+                                    key={v.value}
+                                    disabled={outOfStock}
+                                    onClick={() => selectVariant(product.id, type, v.value)}
+                                    className={`font-sans text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                                      isSelected
+                                        ? 'bg-ink text-chalk border-ink'
+                                        : outOfStock
+                                        ? 'border-black/8 text-ink/20 cursor-not-allowed line-through'
+                                        : 'border-black/15 text-ink hover:border-ink'
+                                    }`}
+                                  >
+                                    {v.value}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-auto">
+                      <p className="font-display text-xl text-ink">{formatPrice(product.price_cents)}</p>
+                      <button
+                        onClick={() => addToCart(product, sel)}
+                        disabled={isSoldOut || !allTypesSelected}
+                        className="bg-rouge hover:bg-rouge-light disabled:opacity-40 disabled:cursor-not-allowed text-chalk font-sans text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                      >
+                        {hasVariants && !allTypesSelected ? 'Select options' : 'Add to Cart'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -177,30 +247,40 @@ export default function Store() {
               {cart.length === 0 && (
                 <p className="font-sans text-sm text-ink/40 text-center py-8">Your cart is empty.</p>
               )}
-              {cart.map(({ product, quantity }) => (
-                <div key={product.id} className="flex gap-3">
-                  <div className="w-16 h-16 rounded-lg bg-black/5 overflow-hidden shrink-0">
-                    {product.images?.[0]
-                      ? <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center"><Package size={20} className="text-ink/20" /></div>
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-sans text-sm text-ink font-medium truncate">{product.name}</p>
-                    <p className="font-sans text-sm text-ink/50">{formatPrice(product.price_cents)}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <button onClick={() => updateQty(product.id, -1)} className="w-6 h-6 rounded-full border border-black/15 flex items-center justify-center hover:border-rouge hover:text-rouge transition-colors">
-                        <Minus size={10} />
-                      </button>
-                      <span className="font-sans text-sm w-4 text-center">{quantity}</span>
-                      <button onClick={() => updateQty(product.id, 1)} className="w-6 h-6 rounded-full border border-black/15 flex items-center justify-center hover:border-rouge hover:text-rouge transition-colors">
-                        <Plus size={10} />
-                      </button>
+              {cart.map(item => {
+                const key = cartKey(item.product.id, item.selectedVariants)
+                const variantLabel = Object.entries(item.selectedVariants)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(' · ')
+                return (
+                  <div key={key} className="flex gap-3">
+                    <div className="w-16 h-16 rounded-lg bg-black/5 overflow-hidden shrink-0">
+                      {item.product.images?.[0]
+                        ? <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><Package size={20} className="text-ink/20" /></div>
+                      }
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-sans text-sm text-ink font-medium truncate">{item.product.name}</p>
+                      {variantLabel && (
+                        <p className="font-sans text-xs text-ink/40 truncate">{variantLabel}</p>
+                      )}
+                      <p className="font-sans text-sm text-ink/50">{formatPrice(item.product.price_cents)}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <button onClick={() => updateQty(key, -1)} className="w-6 h-6 rounded-full border border-black/15 flex items-center justify-center hover:border-rouge hover:text-rouge transition-colors">
+                          <Minus size={10} />
+                        </button>
+                        <span className="font-sans text-sm w-4 text-center">{item.quantity}</span>
+                        <button onClick={() => updateQty(key, 1)} className="w-6 h-6 rounded-full border border-black/15 flex items-center justify-center hover:border-rouge hover:text-rouge transition-colors">
+                          <Plus size={10} />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="font-sans text-sm text-ink font-medium shrink-0">{formatPrice(item.product.price_cents * item.quantity)}</p>
                   </div>
-                  <p className="font-sans text-sm text-ink font-medium shrink-0">{formatPrice(product.price_cents * quantity)}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Footer */}
