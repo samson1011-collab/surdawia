@@ -1,0 +1,1600 @@
+  }
+}
+ENDOFFILE
+echo "  wrote package-lock.json"
+cat > package.json << 'ENDOFFILE'
+{
+  "name": "relief-org",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.1",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-dropdown-menu": "^2.1.2",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-select": "^2.1.2",
+    "@radix-ui/react-separator": "^1.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.1",
+    "@radix-ui/react-toast": "^1.2.2",
+    "@radix-ui/react-tooltip": "^1.1.4",
+    "@stripe/react-stripe-js": "^2.8.1",
+    "@stripe/stripe-js": "^4.8.0",
+    "@supabase/supabase-js": "^2.46.1",
+    "@tanstack/react-query": "^5.59.20",
+    "@tanstack/react-query-devtools": "^5.59.20",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
+ENDOFFILE
+echo "  wrote package.json"
+cat > public/favicon.svg << 'ENDOFFILE'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="14" stroke="#CE1126" stroke-width="2" fill="none" opacity="0.8"/>
+  <path d="M16 8v16M11 12l5 4 5-4" stroke="#007A3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+ENDOFFILE
+echo "  wrote public/favicon.svg"
+cat > src/App.tsx << 'ENDOFFILE'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/lib/queryClient'
+import { AuthProvider } from '@/auth/AuthContext'
+
+// Layouts
+import PublicLayout from '@/public-site/components/PublicLayout'
+import AdminLayout from '@/admin/components/AdminLayout'
+import ProtectedRoute from '@/admin/components/ProtectedRoute'
+
+// Auth
+import LoginPage from '@/auth/LoginPage'
+
+// Public pages
+import Home from '@/public-site/pages/Home'
+import Donate from '@/public-site/pages/Donate'
+import Gallery from '@/public-site/pages/Gallery'
+import Timeline from '@/public-site/pages/Timeline'
+import GratitudeWall from '@/public-site/pages/GratitudeWall'
+import Store from '@/public-site/pages/Store'
+
+// Admin pages
+import Dashboard from '@/admin/pages/Dashboard'
+import DonationManager from '@/admin/pages/DonationManager'
+import MediaManager from '@/admin/pages/MediaManager'
+import GratitudeVideos from '@/admin/pages/GratitudeVideos'
+import StoreManager from '@/admin/pages/StoreManager'
+import WebsiteCMS from '@/admin/pages/WebsiteCMS'
+import Settings from '@/admin/pages/Settings'
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* ── Public site ───────────────────────────────── */}
+            <Route element={<PublicLayout />}>
+              <Route path="/"          element={<Home />} />
+              <Route path="/donate"    element={<Donate />} />
+              <Route path="/gallery"   element={<Gallery />} />
+              <Route path="/timeline"  element={<Timeline />} />
+              <Route path="/gratitude" element={<GratitudeWall />} />
+              <Route path="/store"     element={<Store />} />
+            </Route>
+
+            {/* ── Auth ──────────────────────────────────────── */}
+            <Route path="/admin/login" element={<LoginPage />} />
+
+            {/* ── Admin portal (protected) ──────────────────── */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index                  element={<Dashboard />} />
+              <Route path="donations"       element={<DonationManager />} />
+              <Route path="media"           element={<MediaManager />} />
+              <Route path="gratitude"       element={<GratitudeVideos />} />
+              <Route path="store"           element={<StoreManager />} />
+              <Route path="website"         element={<WebsiteCMS />} />
+              <Route path="settings"        element={<Settings />} />
+            </Route>
+
+            {/* ── Fallback ──────────────────────────────────── */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  )
+}
+ENDOFFILE
+echo "  wrote src/App.tsx"
+cat > src/admin/components/AdminLayout.tsx << 'ENDOFFILE'
+import { Outlet } from 'react-router-dom'
+import AdminNav from './AdminNav'
+
+export default function AdminLayout() {
+  return (
+    <div className="flex min-h-screen bg-ink">
+      <AdminNav />
+      <main className="flex-1 overflow-auto bg-chalk-off">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/components/AdminLayout.tsx"
+cat > src/admin/components/AdminNav.tsx << 'ENDOFFILE'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthContext'
+import {
+  LayoutDashboard, Image, Heart, Video, ShoppingBag,
+  Globe, Settings, LogOut, ChevronRight
+} from 'lucide-react'
+
+const navItems = [
+  { to: '/admin',           icon: LayoutDashboard, label: 'Dashboard',        exact: true },
+  { to: '/admin/donations', icon: Heart,           label: 'Donations'                     },
+  { to: '/admin/media',     icon: Image,           label: 'Media'                         },
+  { to: '/admin/gratitude', icon: Video,           label: 'Gratitude Videos'              },
+  { to: '/admin/store',     icon: ShoppingBag,     label: 'Store'                         },
+  { to: '/admin/website',   icon: Globe,           label: 'Website CMS'                   },
+  { to: '/admin/settings',  icon: Settings,        label: 'Settings'                      },
+]
+
+export default function AdminNav() {
+  const { profile, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/admin/login')
+  }
+
+  return (
+    <aside className="w-60 shrink-0 bg-ink min-h-screen flex flex-col border-r border-white/8">
+      {/* Top flag stripe */}
+      <div className="h-0.5 flex">
+        <div className="flex-1 bg-red" />
+        <div className="flex-1 bg-chalk/80" />
+        <div className="flex-1 bg-green" />
+      </div>
+
+      {/* Brand */}
+      <div className="px-5 py-5 border-b border-white/8">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full border border-white/15 bg-white/5 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
+              <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.7"/>
+              <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <p className="font-display text-sm text-chalk leading-tight">Relief Org</p>
+            <p className="font-sans text-xs text-white/35">Admin Portal</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav items */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {navItems.map(({ to, icon: Icon, label, exact }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={exact}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans transition-all group ${
+                isActive
+                  ? 'bg-red/15 text-red-light border-l-2 border-red pl-[10px]'
+                  : 'text-white/45 hover:text-white/80 hover:bg-white/5 border-l-2 border-transparent pl-[10px]'
+              }`
+            }
+          >
+            <Icon size={15} className="shrink-0" />
+            <span className="flex-1">{label}</span>
+            <ChevronRight size={11} className="opacity-0 group-hover:opacity-30 transition-opacity" />
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      <div className="px-3 py-4 border-t border-white/8">
+        <div className="px-3 py-2 mb-1">
+          <p className="font-sans text-xs text-white/55 truncate">{profile?.full_name ?? 'Admin'}</p>
+          <p className="font-sans text-xs text-white/25 truncate">{profile?.email}</p>
+        </div>
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans text-white/35 hover:text-red-light hover:bg-red/10 transition-all"
+        >
+          <LogOut size={15} />
+          <span>Sign out</span>
+        </button>
+      </div>
+    </aside>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/components/AdminNav.tsx"
+cat > src/admin/components/ProtectedRoute.tsx << 'ENDOFFILE'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthContext'
+
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, rolesLoaded, isAdmin } = useAuth()
+
+  if (loading || (user && !rolesLoaded)) {
+    return (
+      <div className="min-h-screen bg-ink flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/10 border-t-red rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) return <Navigate to="/admin/login" replace />
+  if (!isAdmin) return <Navigate to="/" replace />
+
+  return <>{children}</>
+}
+ENDOFFILE
+echo "  wrote src/admin/components/ProtectedRoute.tsx"
+cat > src/admin/pages/Dashboard.tsx << 'ENDOFFILE'
+import { Heart, Image, Video, ShoppingBag, TrendingUp, Users } from 'lucide-react'
+
+const stats = [
+  { label: 'Total Donated',    value: '$0',  sub: 'all time',      icon: Heart,       accent: 'bg-red/10 text-red'         },
+  { label: 'Media Items',      value: '0',   sub: 'published',     icon: Image,       accent: 'bg-ink/10 text-ink-light'   },
+  { label: 'Gratitude Videos', value: '0',   sub: 'published',     icon: Video,       accent: 'bg-green/10 text-green'     },
+  { label: 'Store Orders',     value: '0',   sub: 'this month',    icon: ShoppingBag, accent: 'bg-red/10 text-red'         },
+  { label: 'Monthly Recurring','value': '$0',sub: 'active donors', icon: TrendingUp,  accent: 'bg-green/10 text-green'     },
+  { label: 'Unique Donors',    value: '0',   sub: 'all time',      icon: Users,       accent: 'bg-ink/10 text-ink-light'   },
+]
+
+export default function Dashboard() {
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="font-display text-3xl text-ink">Dashboard</h1>
+        <p className="font-sans text-sm text-ink-faint mt-1">Overview of your relief organization</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {stats.map(({ label, value, sub, icon: Icon, accent }) => (
+          <div key={label} className="bg-chalk rounded-xl border border-chalk-muted p-6 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <p className="font-sans text-xs text-ink-faint uppercase tracking-widest">{label}</p>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent}`}>
+                <Icon size={15} />
+              </div>
+            </div>
+            <p className="font-display text-3xl text-ink">{value}</p>
+            <p className="font-sans text-xs text-ink-faint/60 mt-1">{sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Flag-accented getting started card */}
+      <div className="bg-chalk rounded-xl border border-chalk-muted overflow-hidden shadow-sm">
+        <div className="h-1 flex">
+          <div className="flex-1 bg-red" />
+          <div className="flex-1 bg-ink" />
+          <div className="flex-1 bg-chalk-muted" />
+          <div className="flex-1 bg-green" />
+        </div>
+        <div className="p-6">
+          <h2 className="font-serif text-lg text-ink mb-1">Getting Started</h2>
+          <p className="font-sans text-sm text-ink-faint">
+            Connect your Supabase project and Stripe account to start accepting donations and managing content.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/Dashboard.tsx"
+cat > src/admin/pages/DonationManager.tsx << 'ENDOFFILE'
+export default function DonationManager() {
+  return (
+    <div className="p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-6 w-1 rounded-full bg-rouge" />
+        <h1 className="font-display text-3xl text-ink">DonationManager</h1>
+      </div>
+      <p className="font-sans text-sm text-ink/40 ml-4">Ready to build.</p>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/DonationManager.tsx"
+cat > src/admin/pages/GratitudeVideos.tsx << 'ENDOFFILE'
+export default function GratitudeVideos() {
+  return (
+    <div className="p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-6 w-1 rounded-full bg-rouge" />
+        <h1 className="font-display text-3xl text-ink">GratitudeVideos</h1>
+      </div>
+      <p className="font-sans text-sm text-ink/40 ml-4">Ready to build.</p>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/GratitudeVideos.tsx"
+cat > src/admin/pages/MediaManager.tsx << 'ENDOFFILE'
+export default function MediaManager() {
+  return (
+    <div className="p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-6 w-1 rounded-full bg-rouge" />
+        <h1 className="font-display text-3xl text-ink">MediaManager</h1>
+      </div>
+      <p className="font-sans text-sm text-ink/40 ml-4">Ready to build.</p>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/MediaManager.tsx"
+cat > src/admin/pages/Settings.tsx << 'ENDOFFILE'
+export default function Settings() {
+  return (
+    <div className="p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-6 w-1 rounded-full bg-rouge" />
+        <h1 className="font-display text-3xl text-ink">Settings</h1>
+      </div>
+      <p className="font-sans text-sm text-ink/40 ml-4">Ready to build.</p>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/Settings.tsx"
+cat > src/admin/pages/StoreManager.tsx << 'ENDOFFILE'
+export default function StoreManager() {
+  return (
+    <div className="p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-6 w-1 rounded-full bg-rouge" />
+        <h1 className="font-display text-3xl text-ink">StoreManager</h1>
+      </div>
+      <p className="font-sans text-sm text-ink/40 ml-4">Ready to build.</p>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/StoreManager.tsx"
+cat > src/admin/pages/WebsiteCMS.tsx << 'ENDOFFILE'
+export default function WebsiteCMS() {
+  return (
+    <div className="p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-6 w-1 rounded-full bg-rouge" />
+        <h1 className="font-display text-3xl text-ink">WebsiteCMS</h1>
+      </div>
+      <p className="font-sans text-sm text-ink/40 ml-4">Ready to build.</p>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/admin/pages/WebsiteCMS.tsx"
+cat > src/auth/AuthContext.tsx << 'ENDOFFILE'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { User, Session } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
+import type { AppRole, UserProfile } from '@/types'
+
+interface AuthContextValue {
+  user: User | null
+  session: Session | null
+  profile: UserProfile | null
+  role: AppRole | null
+  loading: boolean
+  rolesLoaded: boolean
+  isAdmin: boolean
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>
+  signOut: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser]           = useState<User | null>(null)
+  const [session, setSession]     = useState<Session | null>(null)
+  const [profile, setProfile]     = useState<UserProfile | null>(null)
+  const [role, setRole]           = useState<AppRole | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [rolesLoaded, setRolesLoaded] = useState(false)
+
+  async function fetchUserData(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+
+      setProfile(data as UserProfile)
+      setRole((data as UserProfile).role)
+    } catch (err) {
+      console.error('Failed to fetch user profile:', err)
+    } finally {
+      setRolesLoaded(true)
+    }
+  }
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserData(session.user.id)
+      } else {
+        setLoading(false)
+        setRolesLoaded(true)
+      }
+    })
+
+    // Listen for auth changes — only fetch profile on SIGNED_IN (not INITIAL_SESSION)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        setRolesLoaded(false)
+        fetchUserData(session.user.id)
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setProfile(null)
+        setRole(null)
+        setRolesLoaded(true)
+      }
+
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function signIn(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error: error as Error | null }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+  }
+
+  const isAdmin = role === 'admin' || role === 'super_admin'
+
+  return (
+    <AuthContext.Provider value={{
+      user, session, profile, role,
+      loading, rolesLoaded,
+      isAdmin,
+      signIn, signOut,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
+}
+ENDOFFILE
+echo "  wrote src/auth/AuthContext.tsx"
+cat > src/auth/LoginPage.tsx << 'ENDOFFILE'
+import { useState, FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from './AuthContext'
+
+export default function LoginPage() {
+  const { signIn } = useAuth()
+  const navigate = useNavigate()
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError]       = useState<string | null>(null)
+  const [loading, setLoading]   = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    const { error } = await signIn(email, password)
+    setLoading(false)
+    if (error) {
+      setError('Invalid email or password.')
+    } else {
+      navigate('/admin')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-ink flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Background: subtle flag stripe along the top */}
+      <div className="absolute top-0 left-0 right-0 h-1 flex">
+        <div className="flex-1 bg-red" />
+        <div className="flex-1 bg-chalk" />
+        <div className="flex-1 bg-green" />
+        <div className="flex-1 bg-ink border-t border-white/10" />
+      </div>
+
+      {/* Faint radial glow */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(206,17,38,0.06) 0%, transparent 70%)' }}
+      />
+
+      <div className="relative w-full max-w-sm">
+        {/* Logo */}
+        <div className="text-center mb-10 animate-fade-up" style={{ animationFillMode: 'forwards' }}>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-white/10 bg-white/5 mb-5">
+            {/* Olive branch / humanitarian mark */}
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.6"/>
+              <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <h1 className="font-display text-2xl text-chalk tracking-tight">Admin Portal</h1>
+          <p className="font-sans text-sm text-white/40 mt-1">Relief Organization</p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-ink-mid border border-white/8 rounded-2xl p-8 shadow-2xl animate-fade-up delay-100"
+          style={{ animationFillMode: 'forwards' }}>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block font-sans text-xs text-white/40 uppercase tracking-widest mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="w-full bg-ink border border-white/10 rounded-xl px-4 py-3 font-sans text-sm text-chalk placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-red/50 transition"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block font-sans text-xs text-white/40 uppercase tracking-widest mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                className="w-full bg-ink border border-white/10 rounded-xl px-4 py-3 font-sans text-sm text-chalk placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-red/50 transition"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && (
+              <p className="font-sans text-sm text-red-light bg-red/10 border border-red/20 rounded-xl px-4 py-3">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-red hover:bg-red-light disabled:opacity-50 text-chalk font-sans font-medium text-sm rounded-xl px-4 py-3 transition-colors"
+            >
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center mt-6 font-sans text-xs text-white/25">
+          <a href="/" className="hover:text-white/50 transition-colors">← Back to public site</a>
+        </p>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/auth/LoginPage.tsx"
+cat > src/index.css << 'ENDOFFILE'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Palestinian flag CSS vars ──────────────────────────────── */
+    --red:          #CE1126;
+    --red-light:    #e63347;
+    --red-pale:     #fde8ea;
+    --green:        #007A3D;
+    --green-light:  #009e50;
+    --green-pale:   #d4f0e0;
+    --ink:          #0a0a0a;
+    --ink-mid:      #1a1a1a;
+    --ink-light:    #2e2e2e;
+    --chalk:        #ffffff;
+    --chalk-off:    #f7f7f7;
+    --chalk-warm:   #f2f2f0;
+    --chalk-muted:  #e8e8e8;
+
+    /* ── shadcn/ui CSS vars (mapped to flag palette) ─────────────── */
+    --background:           0 0% 97%;
+    --foreground:           0 0% 4%;
+    --card:                 0 0% 100%;
+    --card-foreground:      0 0% 4%;
+    --popover:              0 0% 100%;
+    --popover-foreground:   0 0% 4%;
+    --primary:              350 84% 44%;    /* red */
+    --primary-foreground:   0 0% 100%;
+    --secondary:            0 0% 94%;
+    --secondary-foreground: 0 0% 10%;
+    --muted:                0 0% 94%;
+    --muted-foreground:     0 0% 45%;
+    --accent:               150 100% 24%;  /* green */
+    --accent-foreground:    0 0% 100%;
+    --destructive:          350 84% 44%;
+    --destructive-foreground: 0 0% 100%;
+    --border:               0 0% 88%;
+    --input:                0 0% 88%;
+    --ring:                 350 84% 44%;
+    --radius:               0.5rem;
+  }
+
+  * { @apply border-border; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-chalk-off text-ink font-sans antialiased;
+  }
+
+  h1, h2, h3 { @apply font-display; }
+  h4, h5, h6 { @apply font-serif; }
+}
+
+@layer utilities {
+  /* Animation delays */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+
+  /* Initial hidden state for animated elements */
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-slide-in-right {
+    opacity: 0;
+  }
+
+  /* Flag stripe gradient — horizontal tricolor */
+  .bg-flag-stripe {
+    background: linear-gradient(
+      to right,
+      var(--ink) 33.33%,
+      var(--chalk) 33.33% 66.66%,
+      var(--green) 66.66%
+    );
+  }
+
+  /* Red triangle — recreates the flag's left triangle via clip */
+  .flag-triangle {
+    clip-path: polygon(0 0, 33% 50%, 0 100%);
+    background: var(--red);
+  }
+
+  /* Text gradient — red to green */
+  .text-gradient-flag {
+    background: linear-gradient(135deg, var(--red) 0%, var(--green) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Grain overlay for texture */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+ENDOFFILE
+echo "  wrote src/index.css"
+cat > src/lib/queryClient.ts << 'ENDOFFILE'
+import { QueryClient } from '@tanstack/react-query'
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,   // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+ENDOFFILE
+echo "  wrote src/lib/queryClient.ts"
+cat > src/lib/stripe.ts << 'ENDOFFILE'
+import { loadStripe } from '@stripe/stripe-js'
+
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
+
+if (!stripePublishableKey) {
+  console.warn('Missing VITE_STRIPE_PUBLISHABLE_KEY — payments will not work.')
+}
+
+// Singleton — loadStripe is safe to call multiple times but only loads once
+export const stripePromise = loadStripe(stripePublishableKey ?? '')
+ENDOFFILE
+echo "  wrote src/lib/stripe.ts"
+cat > src/lib/supabase.ts << 'ENDOFFILE'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Check your .env file.')
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+ENDOFFILE
+echo "  wrote src/lib/supabase.ts"
+cat > src/main.tsx << 'ENDOFFILE'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+ENDOFFILE
+echo "  wrote src/main.tsx"
+cat > src/public-site/components/Footer.tsx << 'ENDOFFILE'
+import { Link } from 'react-router-dom'
+import { Heart } from 'lucide-react'
+
+export default function Footer() {
+  return (
+    <footer className="bg-ink border-t border-white/8">
+      {/* Flag stripe */}
+      <div className="h-[3px] flex">
+        <div className="flex-1 bg-red" />
+        <div className="flex-1 bg-chalk/60" />
+        <div className="flex-1 bg-green" />
+        <div className="flex-1 bg-ink-mid" />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-5 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          {/* Brand */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full border border-white/15 bg-white/5 flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
+                  <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.8"/>
+                  <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span className="font-display text-base text-chalk">Relief Org</span>
+            </div>
+            <p className="font-sans text-sm text-white/40 leading-relaxed">
+              Every dollar goes directly to families in need. 100% of store proceeds fund relief work on the ground.
+            </p>
+          </div>
+
+          {/* Links */}
+          <div>
+            <h4 className="font-sans text-xs text-white/30 uppercase tracking-widest mb-4">Navigate</h4>
+            <ul className="space-y-2">
+              {[
+                { to: '/donate',    label: 'Donate'         },
+                { to: '/gallery',   label: 'Gallery'        },
+                { to: '/timeline',  label: 'Our Work'       },
+                { to: '/gratitude', label: 'Gratitude Wall' },
+                { to: '/store',     label: 'Store'          },
+              ].map(({ to, label }) => (
+                <li key={to}>
+                  <Link to={to} className="font-sans text-sm text-white/45 hover:text-white/75 transition">
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* CTA */}
+          <div>
+            <h4 className="font-sans text-xs text-white/30 uppercase tracking-widest mb-4">Make an Impact</h4>
+            <p className="font-sans text-sm text-white/40 mb-4 leading-relaxed">
+              Your generosity restores dignity and saves lives.
+            </p>
+            <Link
+              to="/donate"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-red hover:bg-red-light text-chalk font-sans text-sm font-medium rounded-lg transition-colors"
+            >
+              <Heart size={14} />
+              Donate Now
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-12 pt-6 border-t border-white/8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="font-sans text-xs text-white/25">
+            © {new Date().getFullYear()} Relief Org. All proceeds support humanitarian relief.
+          </p>
+          <p className="font-sans text-xs text-white/20">
+            Built with care for those who need it most.
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/components/Footer.tsx"
+cat > src/public-site/components/Navbar.tsx << 'ENDOFFILE'
+import { useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
+
+const links = [
+  { to: '/donate',    label: 'Donate'          },
+  { to: '/gallery',   label: 'Gallery'         },
+  { to: '/timeline',  label: 'Our Work'        },
+  { to: '/gratitude', label: 'Gratitude Wall'  },
+  { to: '/store',     label: 'Store'           },
+]
+
+export default function Navbar() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <header className="sticky top-0 z-50 bg-ink/95 backdrop-blur border-b border-white/8">
+      {/* Flag stripe — 4px */}
+      <div className="h-[3px] flex">
+        <div className="flex-1 bg-ink" />
+        <div className="flex-1 bg-chalk/70" />
+        <div className="flex-1 bg-green" />
+        <div className="w-[3px] bg-red" style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-5 flex items-center justify-between h-16">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="w-8 h-8 rounded-full border border-white/15 bg-white/5 flex items-center justify-center transition group-hover:border-red/40">
+            <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
+              <circle cx="14" cy="14" r="10" stroke="#CE1126" strokeWidth="1.5" opacity="0.8"/>
+              <path d="M14 8v12M9 11l5 3 5-3" stroke="#007A3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="font-display text-base text-chalk tracking-tight">Relief Org</span>
+        </Link>
+
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1">
+          {links.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-lg font-sans text-sm transition ${
+                  isActive ? 'text-red-light' : 'text-white/50 hover:text-white/80'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+          <Link
+            to="/donate"
+            className="ml-3 px-5 py-2 bg-red hover:bg-red-light text-chalk font-sans text-sm font-medium rounded-lg transition-colors"
+          >
+            Give Now
+          </Link>
+        </nav>
+
+        {/* Mobile toggle */}
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="md:hidden text-white/60 hover:text-white transition p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          aria-label="Toggle menu"
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* Mobile drawer */}
+      {open && (
+        <div className="md:hidden bg-ink-mid border-t border-white/8 px-5 pb-5">
+          <nav className="flex flex-col gap-1 pt-3">
+            {links.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `px-4 py-3 rounded-lg font-sans text-sm min-h-[44px] flex items-center transition ${
+                    isActive ? 'text-red-light bg-red/10' : 'text-white/55 hover:text-white/80 hover:bg-white/5'
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+            <Link
+              to="/donate"
+              onClick={() => setOpen(false)}
+              className="mt-2 px-4 py-3 bg-red hover:bg-red-light text-chalk font-sans text-sm font-medium rounded-lg transition-colors text-center min-h-[44px] flex items-center justify-center"
+            >
+              Give Now
+            </Link>
+          </nav>
+        </div>
+      )}
+    </header>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/components/Navbar.tsx"
+cat > src/public-site/components/PublicLayout.tsx << 'ENDOFFILE'
+import { Outlet } from 'react-router-dom'
+import Navbar from './Navbar'
+import Footer from './Footer'
+
+export default function PublicLayout() {
+  return (
+    <div className="min-h-screen flex flex-col bg-chalk-off">
+      <Navbar />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/components/PublicLayout.tsx"
+cat > src/public-site/pages/Donate.tsx << 'ENDOFFILE'
+export default function Donate() {
+  return (
+    <div className="max-w-6xl mx-auto px-5 py-16">
+      <div className="mb-8 border-l-4 border-red pl-5">
+        <h1 className="font-display text-4xl text-ink">Donate</h1>
+        <p className="font-sans text-sm text-ink-faint mt-1">Ready to build.</p>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/pages/Donate.tsx"
+cat > src/public-site/pages/Gallery.tsx << 'ENDOFFILE'
+export default function Gallery() {
+  return (
+    <div className="max-w-6xl mx-auto px-5 py-16">
+      <div className="mb-8 border-l-4 border-red pl-5">
+        <h1 className="font-display text-4xl text-ink">Gallery</h1>
+        <p className="font-sans text-sm text-ink-faint mt-1">Ready to build.</p>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/pages/Gallery.tsx"
+cat > src/public-site/pages/GratitudeWall.tsx << 'ENDOFFILE'
+export default function GratitudeWall() {
+  return (
+    <div className="max-w-6xl mx-auto px-5 py-16">
+      <div className="mb-8 border-l-4 border-red pl-5">
+        <h1 className="font-display text-4xl text-ink">GratitudeWall</h1>
+        <p className="font-sans text-sm text-ink-faint mt-1">Ready to build.</p>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/pages/GratitudeWall.tsx"
+cat > src/public-site/pages/Home.tsx << 'ENDOFFILE'
+import { Link } from 'react-router-dom'
+import { Heart, Play, ArrowRight } from 'lucide-react'
+
+export default function Home() {
+  return (
+    <div>
+      {/* ── Hero ──────────────────────────────────────────────────── */}
+      <section className="relative bg-ink overflow-hidden min-h-[92vh] flex items-center">
+        {/* Background radial */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-1/3 h-full bg-red/8" style={{ clipPath: 'polygon(0 0, 100% 0, 60% 100%, 0 100%)' }} />
+          <div className="absolute bottom-0 right-0 w-64 h-64 bg-green/8 rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative max-w-6xl mx-auto px-5 py-24 grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/6 border border-white/10 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+              <span className="font-sans text-xs text-white/55 tracking-wide">Active Relief Operations</span>
+            </div>
+
+            <h1 className="font-display text-5xl md:text-6xl text-chalk leading-tight mb-6">
+              Bringing Hope<br />
+              <span className="text-red">to Those</span><br />
+              Who Need It Most
+            </h1>
+
+            <p className="font-serif text-xl text-white/55 leading-relaxed mb-10 max-w-md">
+              Every donation goes directly to families on the ground. No overhead. No delay. Just impact.
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <Link
+                to="/donate"
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-red hover:bg-red-light text-chalk font-sans font-medium rounded-xl transition-colors min-h-[44px]"
+              >
+                <Heart size={16} />
+                Donate Now
+              </Link>
+              <Link
+                to="/timeline"
+                className="inline-flex items-center gap-2 px-7 py-3.5 border border-white/15 hover:border-white/30 text-white/65 hover:text-white font-sans rounded-xl transition min-h-[44px]"
+              >
+                See Our Work
+                <ArrowRight size={15} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Stats panel */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { value: '100%', label: 'Goes to relief',      color: 'border-red/30'   },
+              { value: '0%',   label: 'Administrative cut',  color: 'border-green/30' },
+              { value: '∞',    label: 'Families reached',    color: 'border-white/15' },
+              { value: '♡',    label: 'With every dollar',   color: 'border-white/15' },
+            ].map(({ value, label, color }) => (
+              <div key={label} className={`bg-white/4 border ${color} rounded-2xl p-6 text-center`}>
+                <p className="font-display text-4xl text-chalk mb-2">{value}</p>
+                <p className="font-sans text-xs text-white/40 leading-snug">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Mission strip ─────────────────────────────────────────── */}
+      <section className="bg-chalk-off py-16">
+        <div className="max-w-3xl mx-auto px-5 text-center">
+          <div className="w-12 h-0.5 bg-red mx-auto mb-8" />
+          <h2 className="font-display text-3xl text-ink mb-5">
+            Relief work powered by community
+          </h2>
+          <p className="font-serif text-lg text-ink-faint leading-relaxed">
+            We document every meal delivered, every family supported, every moment of dignity restored —
+            and we share it all with you. Our donors are our partners.
+          </p>
+        </div>
+      </section>
+
+      {/* ── What you can do ───────────────────────────────────────── */}
+      <section className="py-16 bg-chalk">
+        <div className="max-w-6xl mx-auto px-5">
+          <h2 className="font-display text-3xl text-ink text-center mb-12">Make a difference today</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { to: '/donate',    icon: Heart,  title: 'Donate',         desc: 'One-time or monthly. Every dollar counts.',        bg: 'bg-red',   text: 'text-chalk'  },
+              { to: '/gallery',   icon: null,   title: 'See the Work',   desc: 'Photos and videos from the ground.',               bg: 'bg-ink',   text: 'text-chalk'  },
+              { to: '/gratitude', icon: Play,   title: 'Gratitude Wall', desc: 'Families thanking donors by name.',                bg: 'bg-green', text: 'text-chalk'  },
+              { to: '/store',     icon: null,   title: 'Shop & Give',    desc: '100% of proceeds go to relief operations.',       bg: 'bg-chalk-warm border border-chalk-muted',  text: 'text-ink' },
+            ].map(({ to, title, desc, bg, text }) => (
+              <Link key={to} to={to} className={`${bg} ${text} rounded-2xl p-7 flex flex-col justify-between min-h-[180px] group transition hover:opacity-90`}>
+                <div>
+                  <h3 className="font-display text-xl mb-2">{title}</h3>
+                  <p className="font-sans text-sm opacity-70 leading-relaxed">{desc}</p>
+                </div>
+                <ArrowRight size={18} className="mt-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/pages/Home.tsx"
+cat > src/public-site/pages/Store.tsx << 'ENDOFFILE'
+export default function Store() {
+  return (
+    <div className="max-w-6xl mx-auto px-5 py-16">
+      <div className="mb-8 border-l-4 border-red pl-5">
+        <h1 className="font-display text-4xl text-ink">Store</h1>
+        <p className="font-sans text-sm text-ink-faint mt-1">Ready to build.</p>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/pages/Store.tsx"
+cat > src/public-site/pages/Timeline.tsx << 'ENDOFFILE'
+export default function Timeline() {
+  return (
+    <div className="max-w-6xl mx-auto px-5 py-16">
+      <div className="mb-8 border-l-4 border-red pl-5">
+        <h1 className="font-display text-4xl text-ink">Timeline</h1>
+        <p className="font-sans text-sm text-ink-faint mt-1">Ready to build.</p>
+      </div>
+    </div>
+  )
+}
+ENDOFFILE
+echo "  wrote src/public-site/pages/Timeline.tsx"
+cat > src/types/index.ts << 'ENDOFFILE'
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+export type AppRole = 'admin' | 'super_admin'
+
+export interface UserProfile {
+  id: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+  role: AppRole
+  created_at: string
+}
+
+// ─── Donations ───────────────────────────────────────────────────────────────
+
+export type DonationStatus = 'pending' | 'completed' | 'failed' | 'refunded'
+export type DonationFrequency = 'one_time' | 'monthly' | 'quarterly' | 'annually'
+
+export interface Donation {
+  id: string
+  donor_name: string
+  donor_email: string
+  amount_cents: number
+  currency: string
+  frequency: DonationFrequency
+  status: DonationStatus
+  stripe_payment_intent_id: string | null
+  message: string | null
+  is_anonymous: boolean
+  created_at: string
+}
+
+// ─── Media ───────────────────────────────────────────────────────────────────
+
+export type MediaType = 'image' | 'video'
+export type MediaCategory = 'relief_work' | 'timeline' | 'gratitude' | 'general'
+
+export interface MediaItem {
+  id: string
+  title: string
+  description: string | null
+  type: MediaType
+  category: MediaCategory
+  url: string
+  thumbnail_url: string | null
+  // For gratitude videos — links to a specific donor
+  dedicated_to_donor_id: string | null
+  dedicated_to_name: string | null
+  location: string | null
+  captured_at: string | null
+  is_published: boolean
+  sort_order: number
+  created_at: string
+}
+
+// ─── Timeline ────────────────────────────────────────────────────────────────
+
+export interface TimelineEntry {
+  id: string
+  title: string
+  description: string
+  date: string
+  location: string | null
+  media_ids: string[]  // references MediaItem ids
+  impact_metric: string | null  // e.g. "Fed 200 families"
+  is_published: boolean
+  created_at: string
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
+export type ProductStatus = 'active' | 'draft' | 'sold_out' | 'archived'
+
+export interface Product {
+  id: string
+  name: string
+  description: string
+  price_cents: number
+  currency: string
+  images: string[]
+  category: string | null
+  stock_quantity: number | null
+  stripe_product_id: string | null
+  stripe_price_id: string | null
+  status: ProductStatus
+  sort_order: number
+  created_at: string
+}
+
+export interface Order {
+  id: string
+  donor_name: string
+  donor_email: string
+  items: OrderItem[]
+  total_cents: number
+  status: DonationStatus
+  stripe_payment_intent_id: string | null
+  shipping_address: ShippingAddress | null
+  created_at: string
+}
+
+export interface OrderItem {
+  product_id: string
+  product_name: string
+  quantity: number
+  price_cents: number
+}
+
+export interface ShippingAddress {
+  line1: string
+  line2?: string
+  city: string
+  state: string
+  postal_code: string
+  country: string
+}
+
+// ─── CMS / Website Content ───────────────────────────────────────────────────
+
+export interface SiteContent {
+  id: string
+  key: string            // e.g. 'hero_headline', 'about_body', 'mission_statement'
+  value: string
+  content_type: 'text' | 'html' | 'markdown'
+  last_updated_by: string | null
+  updated_at: string
+}
+
+// ─── Gratitude ───────────────────────────────────────────────────────────────
+
+export interface GratitudeVideo {
+  id: string
+  video_url: string
+  thumbnail_url: string | null
+  title: string
+  message: string | null
+  from_location: string | null
+  dedicated_to_donor_id: string | null
+  dedicated_to_name: string | null    // shown publicly
+  is_published: boolean
+  created_at: string
+}
+ENDOFFILE
+echo "  wrote src/types/index.ts"
+cat > structure.txt << 'ENDOFFILE'
+relief-org/
+├── public/
+│   └── favicon.svg
+├── src/
+│   ├── admin/                    # Admin portal
+│   │   ├── components/
+│   │   │   ├── AdminLayout.tsx
+│   │   │   ├── AdminNav.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── MediaManager.tsx
+│   │   │   ├── DonationManager.tsx
+│   │   │   ├── GratitudeVideos.tsx
+│   │   │   ├── StoreManager.tsx
+│   │   │   ├── WebsiteCMS.tsx
+│   │   │   └── Settings.tsx
+│   │   └── hooks/
+│   ├── public-site/              # Public marketing site
+│   │   ├── components/
+│   │   │   ├── PublicLayout.tsx
+│   │   │   ├── Navbar.tsx
+│   │   │   └── Footer.tsx
+│   │   └── pages/
+│   │       ├── Home.tsx
+│   │       ├── Donate.tsx
+│   │       ├── Gallery.tsx
+│   │       ├── Timeline.tsx
+│   │       ├── GratitudeWall.tsx
+│   │       └── Store.tsx
+│   ├── auth/
+│   │   ├── LoginPage.tsx
+│   │   └── AuthContext.tsx
+│   ├── lib/
+│   │   ├── supabase.ts
+│   │   ├── stripe.ts
+│   │   └── queryClient.ts
+│   ├── hooks/
+│   │   ├── useAuth.ts
+│   │   └── useDonations.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
+├── supabase/
+│   ├── functions/
+│   │   └── send-email/
+│   │       └── index.ts
+│   └── migrations/
+│       └── 00001_initial_schema.sql
+├── .env.example
+├── .gitignore
+├── index.html
+├── package.json
+├── tailwind.config.ts
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
+ENDOFFILE
+echo "  wrote structure.txt"
+cat > supabase/functions/send-email/index.ts << 'ENDOFFILE'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+
+const RESEND_API_KEY  = Deno.env.get('RESEND_API_KEY')!
+const FROM_EMAIL      = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Relief Org <noreply@yourdomain.com>'
+const ADMIN_EMAIL     = Deno.env.get('ADMIN_EMAIL')       ?? 'admin@yourdomain.com'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
+  try {
+    const body = await req.json()
+    const { template, data } = body as { template: string; data: Record<string, string> }
+
+    let subject = ''
+    let html    = ''
+
+    if (template === 'donation_received') {
+      subject = `New donation from ${data.donor_name}`
+      html = `
+        <h2>New Donation Received</h2>
+        <p><strong>Donor:</strong> ${data.donor_name}</p>
+        <p><strong>Email:</strong> ${data.donor_email}</p>
+        <p><strong>Amount:</strong> $${(parseInt(data.amount_cents) / 100).toFixed(2)}</p>
+        <p><strong>Frequency:</strong> ${data.frequency}</p>
+        ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ''}
+      `
+    } else if (template === 'donation_confirmation') {
+      subject = `Thank you for your donation, ${data.donor_name}`
+      html = `
+        <h2>Thank You, ${data.donor_name}!</h2>
+        <p>Your donation of <strong>$${(parseInt(data.amount_cents) / 100).toFixed(2)}</strong> has been received.</p>
+        <p>100% of your gift goes directly to families in need. Thank you for your generosity.</p>
+      `
+    } else if (template === 'order_received') {
+      subject = `New store order from ${data.donor_name}`
+      html = `
+        <h2>New Store Order</h2>
+        <p><strong>Customer:</strong> ${data.donor_name}</p>
+        <p><strong>Email:</strong> ${data.donor_email}</p>
+        <p><strong>Total:</strong> $${(parseInt(data.total_cents) / 100).toFixed(2)}</p>
+      `
+    } else {
+      return new Response(JSON.stringify({ error: 'Unknown template' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Determine recipient
+    const to = template === 'donation_confirmation' ? data.donor_email : ADMIN_EMAIL
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    })
+
+    const result = await res.json()
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})
+ENDOFFILE
+echo "  wrote supabase/functions/send-email/index.ts"
+cat > supabase/migrations/00001_initial_schema.sql << 'ENDOFFILE'
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Relief Org — Initial Schema
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ── Roles ────────────────────────────────────────────────────────────────────
+CREATE TYPE public.app_role AS ENUM ('admin', 'super_admin');
+
+-- ── Profiles ─────────────────────────────────────────────────────────────────
+CREATE TABLE public.profiles (
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email       TEXT NOT NULL,
+  full_name   TEXT,
+  avatar_url  TEXT,
+  role        public.app_role NOT NULL DEFAULT 'admin',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $func$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name)
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
+  RETURN NEW;
+END;
+$func$;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ── Donations ─────────────────────────────────────────────────────────────────
+CREATE TYPE public.donation_status    AS ENUM ('pending', 'completed', 'failed', 'refunded');
+CREATE TYPE public.donation_frequency AS ENUM ('one_time', 'monthly', 'quarterly', 'annually');
+
+CREATE TABLE public.donations (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  donor_name                TEXT NOT NULL,
+  donor_email               TEXT NOT NULL,
+  amount_cents              INTEGER NOT NULL,
+  currency                  TEXT NOT NULL DEFAULT 'usd',
+  frequency                 public.donation_frequency NOT NULL DEFAULT 'one_time',
+  status                    public.donation_status NOT NULL DEFAULT 'pending',
+  stripe_payment_intent_id  TEXT,
+  message                   TEXT,
+  is_anonymous              BOOLEAN NOT NULL DEFAULT false,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── Media ─────────────────────────────────────────────────────────────────────
+CREATE TYPE public.media_type     AS ENUM ('image', 'video');
+CREATE TYPE public.media_category AS ENUM ('relief_work', 'timeline', 'gratitude', 'general');
+
+CREATE TABLE public.media_items (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title                   TEXT NOT NULL,
+  description             TEXT,
+  type                    public.media_type NOT NULL,
+  category                public.media_category NOT NULL DEFAULT 'general',
+  url                     TEXT NOT NULL,
+  thumbnail_url           TEXT,
+  dedicated_to_donor_id   UUID REFERENCES public.donations(id) ON DELETE SET NULL,
+  dedicated_to_name       TEXT,
+  location                TEXT,
+  captured_at             TIMESTAMPTZ,
+  is_published            BOOLEAN NOT NULL DEFAULT false,
+  sort_order              INTEGER NOT NULL DEFAULT 0,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── Timeline ──────────────────────────────────────────────────────────────────
+CREATE TABLE public.timeline_entries (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title           TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  date            DATE NOT NULL,
+  location        TEXT,
+  media_ids       UUID[] NOT NULL DEFAULT '{}',
+  impact_metric   TEXT,
+  is_published    BOOLEAN NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── Gratitude Videos ──────────────────────────────────────────────────────────
+CREATE TABLE public.gratitude_videos (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_url               TEXT NOT NULL,
+  thumbnail_url           TEXT,
+  title                   TEXT NOT NULL,
+  message                 TEXT,
+  from_location           TEXT,
+  dedicated_to_donor_id   UUID REFERENCES public.donations(id) ON DELETE SET NULL,
+  dedicated_to_name       TEXT,
+  is_published            BOOLEAN NOT NULL DEFAULT false,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── Store ─────────────────────────────────────────────────────────────────────
+CREATE TYPE public.product_status AS ENUM ('active', 'draft', 'sold_out', 'archived');
+
+CREATE TABLE public.products (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              TEXT NOT NULL,
+  description       TEXT NOT NULL,
+  price_cents       INTEGER NOT NULL,
+  currency          TEXT NOT NULL DEFAULT 'usd',
+  images            TEXT[] NOT NULL DEFAULT '{}',
+  category          TEXT,
+  stock_quantity    INTEGER,
+  stripe_product_id TEXT,
+  stripe_price_id   TEXT,
+  status            public.product_status NOT NULL DEFAULT 'draft',
+  sort_order        INTEGER NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.orders (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  donor_name                TEXT NOT NULL,
+  donor_email               TEXT NOT NULL,
+  items                     JSONB NOT NULL DEFAULT '[]',
+  total_cents               INTEGER NOT NULL,
+  status                    public.donation_status NOT NULL DEFAULT 'pending',
+  stripe_payment_intent_id  TEXT,
+  shipping_address          JSONB,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── CMS Content ───────────────────────────────────────────────────────────────
+CREATE TYPE public.content_type AS ENUM ('text', 'html', 'markdown');
+
+CREATE TABLE public.site_content (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key                 TEXT NOT NULL UNIQUE,
+  value               TEXT NOT NULL DEFAULT '',
+  content_type        public.content_type NOT NULL DEFAULT 'text',
+  last_updated_by     UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Seed CMS with default keys
+INSERT INTO public.site_content (key, value, content_type) VALUES
