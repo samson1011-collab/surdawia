@@ -94,14 +94,14 @@ export default function StoreManager() {
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error: uploadError } = await supabase.storage
-      .from('product-images')
+      .from('products')
       .upload(path, file, { contentType: file.type })
     if (uploadError) {
       setError(uploadError.message)
       setUploading(false)
       return
     }
-    const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+    const { data } = supabase.storage.from('products').getPublicUrl(path)
     setForm(f => ({ ...f, images: [...f.images, data.publicUrl] }))
     setUploading(false)
   }
