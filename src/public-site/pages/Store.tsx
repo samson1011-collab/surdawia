@@ -98,6 +98,41 @@ function isLightColor(cssHex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 220
 }
 
+// ── Category hierarchy ────────────────────────────────────────────────────────
+
+interface CategoryNode {
+  label: string
+  value: string
+  children?: CategoryNode[]
+}
+
+const CATEGORIES: CategoryNode[] = [
+  { label: 'All Products', value: '' },
+  {
+    label: 'Apparel', value: 'Apparel', children: [
+      { label: 'Men',   value: 'Apparel - Men' },
+      { label: 'Women', value: 'Apparel - Women' },
+      { label: 'Boys',  value: 'Apparel - Boys' },
+      { label: 'Girls', value: 'Apparel - Girls' },
+    ],
+  },
+  { label: 'Jewelry',     value: 'Jewelry' },
+  { label: 'Memorabilia', value: 'Memorabilia' },
+  { label: 'Stickers',    value: 'Stickers' },
+  { label: 'Food',        value: 'Food' },
+]
+
+function matchesCategory(category: string | null, filterValue: string, hasChildren: boolean): boolean {
+  if (filterValue === '') return true
+  if (!category) return false
+  if (hasChildren) return category === filterValue || category.startsWith(filterValue + ' - ')
+  return category === filterValue
+}
+
+function countCategory(products: Product[], filterValue: string, hasChildren: boolean): number {
+  return products.filter(p => matchesCategory(p.category ?? null, filterValue, hasChildren)).length
+}
+
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
@@ -145,6 +180,9 @@ export default function Store() {
   // Cart state
   const [cart, setCart]           = useState<CartItem[]>([])
   const [cartOpen, setCartOpen]   = useState(false)
+
+  // Category filter
+  const [activeCategory, setActiveCategory] = useState('')
 
   // Product detail modal state
   const [detailProduct, setDetailProduct]   = useState<Product | null>(null)
@@ -222,6 +260,14 @@ export default function Store() {
   const totalItems = cart.reduce((sum, i) => sum + i.quantity, 0)
   const totalCents = cart.reduce((sum, i) => sum + i.effectivePriceCents * i.quantity, 0)
 
+  // Filtered products
+  const activeCatNode = CATEGORIES.find(c => c.value === activeCategory) ??
+    CATEGORIES.flatMap(c => c.children ?? []).find(c => c.value === activeCategory)
+  const activeCatHasChildren = !!(activeCatNode?.children?.length)
+  const filteredProducts = products
+    ? products.filter(p => matchesCategory(p.category ?? null, activeCategory, activeCatHasChildren))
+    : undefined
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -244,11 +290,89 @@ export default function Store() {
       </div>
 
       {/* ── Products grid ───────────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 flex gap-8 items-start">
+
+        {/* ── Desktop category sidebar ── */}
+        <aside className="hidden md:block w-56 shrink-0 sticky top-24">
+          <p className="font-sans text-xs text-ink/40 uppercase tracking-widest mb-3">Categories</p>
+          <nav className="space-y-0.5">
+            {CATEGORIES.map(cat => {
+              const hasKids = !!(cat.children?.length)
+              const count = products ? countCategory(products, cat.value, hasKids) : 0
+              const isActive = activeCategory === cat.value
+              return (
+                <div key={cat.value}>
+                  <button
+                    onClick={() => setActiveCategory(cat.value)}
+                    className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-lg font-sans text-sm transition-colors border-l-2 ${
+                      isActive
+                        ? 'border-rouge text-rouge bg-rouge/5 font-medium'
+                        : 'border-transparent text-ink/60 hover:text-ink hover:bg-black/[0.03]'
+                    }`}
+                  >
+                    <span>{cat.label}</span>
+                    {products && (
+                      <span className={`font-sans text-xs tabular-nums ${isActive ? 'text-rouge/70' : 'text-ink/30'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                  {cat.children?.map(sub => {
+                    const subCount = products ? countCategory(products, sub.value, false) : 0
+                    const isSubActive = activeCategory === sub.value
+                    return (
+                      <button
+                        key={sub.value}
+                        onClick={() => setActiveCategory(sub.value)}
+                        className={`w-full text-left flex items-center justify-between pl-7 pr-3 py-1.5 rounded-lg font-sans text-sm transition-colors border-l-2 ${
+                          isSubActive
+                            ? 'border-rouge text-rouge bg-rouge/5 font-medium'
+                            : 'border-transparent text-ink/40 hover:text-ink hover:bg-black/[0.03]'
+                        }`}
+                      >
+                        <span>{sub.label}</span>
+                        {products && (
+                          <span className={`font-sans text-xs tabular-nums ${isSubActive ? 'text-rouge/70' : 'text-ink/20'}`}>
+                            {subCount}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </nav>
+        </aside>
+
+        {/* ── Main content ── */}
+        <div className="flex-1 min-w-0">
+
+          {/* Mobile pill row */}
+          <div className="md:hidden flex gap-2 overflow-x-auto pb-3 mb-6 -mx-4 px-4">
+            {CATEGORIES.flatMap(cat => [cat, ...(cat.children ?? [])]).map(cat => {
+              const hasKids = !!(CATEGORIES.find(c => c.value === cat.value)?.children?.length)
+              const count = products ? countCategory(products, cat.value, hasKids) : 0
+              const isActive = activeCategory === cat.value
+              return (
+                <button
+                  key={cat.value}
+                  onClick={() => setActiveCategory(cat.value)}
+                  className={`shrink-0 font-sans text-sm px-3.5 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
+                    isActive
+                      ? 'bg-rouge text-chalk border-rouge'
+                      : 'bg-white text-ink/60 border-black/15 hover:border-ink/30 hover:text-ink'
+                  }`}
+                >
+                  {cat.label}{products ? ` (${count})` : ''}
+                </button>
+              )
+            })}
+          </div>
 
         {/* Loading skeletons */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-black/8 overflow-hidden animate-pulse">
                 <div className="bg-black/5 h-56" />
@@ -271,10 +395,18 @@ export default function Store() {
           </div>
         )}
 
+        {/* Filtered empty state */}
+        {!isLoading && products && products.length > 0 && filteredProducts?.length === 0 && (
+          <div className="text-center py-24">
+            <Package size={40} className="mx-auto text-ink/20 mb-4" />
+            <p className="font-sans text-sm text-ink/40">No products in this category yet.</p>
+          </div>
+        )}
+
         {/* Product grid */}
-        {!isLoading && products && products.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map(product => {
+        {!isLoading && filteredProducts && filteredProducts.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {filteredProducts.map(product => {
               const priceRange    = getPriceRange(product)
               const hasVariants   = (product.variants?.length ?? 0) > 0
               const colorVariants = product.variants?.filter(v => v.type.toLowerCase() === 'color') ?? []
@@ -352,6 +484,7 @@ export default function Store() {
             })}
           </div>
         )}
+        </div>{/* end flex-1 main content */}
       </div>
 
       {/* ── Product detail modal ─────────────────────────────────────────── */}

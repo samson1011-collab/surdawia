@@ -460,12 +460,23 @@ export default function StoreManager() {
                   </div>
                   <div>
                     <label className={labelCls}>Category</label>
-                    <input
+                    <select
                       value={form.category}
                       onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                       className={inputCls}
-                      placeholder="e.g. Apparel"
-                    />
+                    >
+                      <option value="">— None —</option>
+                      <optgroup label="Apparel">
+                        <option value="Apparel - Men">Apparel - Men</option>
+                        <option value="Apparel - Women">Apparel - Women</option>
+                        <option value="Apparel - Boys">Apparel - Boys</option>
+                        <option value="Apparel - Girls">Apparel - Girls</option>
+                      </optgroup>
+                      <option value="Jewelry">Jewelry</option>
+                      <option value="Memorabilia">Memorabilia</option>
+                      <option value="Stickers">Stickers</option>
+                      <option value="Food">Food</option>
+                    </select>
                   </div>
                 </div>
 
