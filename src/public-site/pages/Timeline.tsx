@@ -847,7 +847,7 @@ export default function Timeline() {
 
   const camp        = (searchParams.get('camp')     ?? 'all')      as CampFilter
   const categorySlug = searchParams.get('category') ?? 'all'
-  const view         = (searchParams.get('view')    ?? 'timeline') as ViewMode
+  const view         = (searchParams.get('view')    ?? 'grid') as ViewMode
   const category     = slugToCategory(categorySlug)                 as CategoryFilter
 
   // Media for inline timeline strips (all camps, category-filtered)
@@ -1079,13 +1079,19 @@ export default function Timeline() {
             </div>
 
             {/* View toggle */}
-            <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1 ml-auto">
+            <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1 ml-auto relative">
+              {/* sliding active indicator */}
+              <div
+                className="absolute top-1 bottom-1 rounded-md bg-chalk shadow-sm transition-all duration-300 ease-in-out"
+                style={{
+                  left:  view === 'timeline' ? '4px'  : '50%',
+                  right: view === 'timeline' ? '50%'  : '4px',
+                }}
+              />
               <button
                 onClick={() => setFilter('view', 'timeline')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors cursor-pointer ${
-                  view === 'timeline'
-                    ? 'bg-chalk text-ink shadow-sm'
-                    : 'text-ink/50 hover:text-ink'
+                className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors duration-200 cursor-pointer ${
+                  view === 'timeline' ? 'text-ink' : 'text-ink/50 hover:text-ink'
                 }`}
               >
                 <LayoutList size={14} />
@@ -1093,10 +1099,8 @@ export default function Timeline() {
               </button>
               <button
                 onClick={() => setFilter('view', 'grid')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors cursor-pointer ${
-                  view === 'grid'
-                    ? 'bg-chalk text-ink shadow-sm'
-                    : 'text-ink/50 hover:text-ink'
+                className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors duration-200 cursor-pointer ${
+                  view === 'grid' ? 'text-ink' : 'text-ink/50 hover:text-ink'
                 }`}
               >
                 <Grid3X3 size={14} />
