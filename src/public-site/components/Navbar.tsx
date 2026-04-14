@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 
 const links = [
+  { to: '/about',     label: 'About'           },
   { to: '/donate',    label: 'Donate'          },
   { to: '/gallery',   label: 'Gallery'         },
   { to: '/timeline',  label: 'Our Work'        },

@@ -18,6 +18,7 @@ import Gallery from '@/public-site/pages/Gallery'
 import Timeline from '@/public-site/pages/Timeline'
 import GratitudeWall from '@/public-site/pages/GratitudeWall'
 import Store from '@/public-site/pages/Store'
+import About from '@/public-site/pages/About'
 
 // Admin pages
 import Dashboard from '@/admin/pages/Dashboard'
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/timeline"  element={<Timeline />} />
               <Route path="/gratitude" element={<GratitudeWall />} />
               <Route path="/store"     element={<Store />} />
+              <Route path="/about"     element={<About />} />
             </Route>
 
             {/* ── Auth ──────────────────────────────────────── */}
