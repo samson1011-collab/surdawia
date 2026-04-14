@@ -40,13 +40,15 @@ const CAMP_OPTIONS: { value: CampFilter; label: string }[] = [
 ]
 
 const CATEGORY_OPTIONS: { slug: string; label: string; dbValue: CategoryFilter }[] = [
-  { slug: 'all',            label: 'All',              dbValue: 'all'               },
-  { slug: 'food',           label: 'Food',             dbValue: 'Food Distribution' },
-  { slug: 'water_wells',    label: 'Water & Wells',    dbValue: 'Water & Wells'     },
-  { slug: 'medical',        label: 'Medical & Health', dbValue: 'Medical'           },
-  { slug: 'shelter',        label: 'Shelter',          dbValue: 'Shelter'           },
-  { slug: 'education',      label: 'Education',        dbValue: 'Education'         },
-  { slug: 'general_relief', label: 'General Relief',   dbValue: 'General Relief'    },
+  { slug: 'all',            label: 'All',              dbValue: 'all'          },
+  { slug: 'food',           label: 'Food',             dbValue: 'food'         },
+  { slug: 'water_wells',    label: 'Water & Wells',    dbValue: 'water_wells'  },
+  { slug: 'medical',        label: 'Medical & Health', dbValue: 'medical'      },
+  { slug: 'shelter',        label: 'Shelter',          dbValue: 'shelter'      },
+  { slug: 'education',      label: 'Education',        dbValue: 'education'    },
+  { slug: 'general_relief', label: 'General Relief',   dbValue: 'general_relief'},
+  { slug: 'relief_work',    label: 'Relief Work',      dbValue: 'relief_work'  },
+  { slug: 'general',        label: 'General',          dbValue: 'general'      },
 ]
 
 const CAMP_BADGE: Record<MediaCamp, string> = {

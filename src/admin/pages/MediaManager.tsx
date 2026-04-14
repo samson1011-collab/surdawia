@@ -16,9 +16,15 @@ const CAMPS: { value: MediaCamp | 'all'; label: string }[] = [
   { value: 'refugees',   label: 'Gazan Refugees' },
 ]
 
-const CATEGORIES: MediaCategory[] = [
-  'Food Distribution', 'Water & Wells', 'Medical',
-  'Shelter', 'Education', 'General Relief', 'Community',
+const CATEGORIES: { value: MediaCategory; label: string }[] = [
+  { value: 'food',          label: 'Food'           },
+  { value: 'water_wells',   label: 'Water & Wells'  },
+  { value: 'medical',       label: 'Medical & Health'},
+  { value: 'shelter',       label: 'Shelter'        },
+  { value: 'education',     label: 'Education'      },
+  { value: 'general_relief',label: 'General Relief' },
+  { value: 'relief_work',   label: 'Relief Work'    },
+  { value: 'general',       label: 'General'        },
 ]
 
 const CAMP_LABELS: Record<MediaCamp, string> = {
@@ -57,7 +63,7 @@ const EMPTY_FORM = {
   title:       '',
   description: '',
   camp:        'south_gaza' as MediaCamp,
-  category:    'Food Distribution' as MediaCategory,
+  category:    'food' as MediaCategory,
   location:    '',
   captured_at: '',
   youtubeUrl:  '',
@@ -83,7 +89,7 @@ function UploadModal({
     title:       editing?.title       ?? '',
     description: editing?.description ?? '',
     camp:        editing?.camp        ?? 'south_gaza',
-    category:    editing?.category    ?? 'Food Distribution',
+    category:    editing?.category    ?? 'food',
     location:    editing?.location    ?? '',
     captured_at: editing?.captured_at?.slice(0, 10) ?? '',
     youtubeUrl:  editing?.youtube_video_id ? `https://youtube.com/watch?v=${editing.youtube_video_id}` : '',
@@ -311,7 +317,7 @@ function UploadModal({
                 className="w-full border border-black/15 rounded-lg px-3 py-2.5 font-sans text-sm text-ink focus:outline-none focus:border-rouge/50 bg-white"
               >
                 {CATEGORIES.map(c => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
             </div>
@@ -603,7 +609,7 @@ export default function MediaManager() {
           className="border border-black/12 rounded-lg px-3 py-2.5 font-sans text-xs text-ink bg-white focus:outline-none focus:border-rouge/40"
         >
           <option value="all">All Categories</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
 
         {/* Sort */}

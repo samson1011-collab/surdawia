@@ -34,13 +34,14 @@ export interface Donation {
 
 export type MediaType = 'image' | 'video'
 export type MediaCategory =
-  | 'Food Distribution'
-  | 'Water & Wells'
-  | 'Medical'
-  | 'Shelter'
-  | 'Education'
-  | 'General Relief'
-  | 'Community'
+  | 'food'
+  | 'water_wells'
+  | 'medical'
+  | 'shelter'
+  | 'education'
+  | 'general_relief'
+  | 'relief_work'
+  | 'general'
 export type MediaCamp = 'south_gaza' | 'north_gaza' | 'refugees' | 'general'
 
 export interface MediaItem {
