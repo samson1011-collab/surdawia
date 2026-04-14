@@ -172,7 +172,10 @@ function UploadModal({
 
       onSaved()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      const msg = e instanceof Error
+        ? e.message
+        : (e as { message?: string })?.message ?? 'Save failed'
+      setError(msg)
     } finally {
       setSaving(false)
     }
