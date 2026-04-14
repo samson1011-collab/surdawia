@@ -96,3 +96,5 @@ Never push directly to `main`. Always:
 2. Commit changes
 3. Push branch: `git push -u origin <branch>`
 4. Create PR: `gh pr create`
+
+## Critical Rule: Always commit ALL changed files. When a task spans multiple files (admin + public + types), every file must be committed in the same push. Never commit only one file when the task required changes to many. After every task, run: git diff --name-only HEAD~1 to verify all expected files were committed. If any are missing, commit them immediately.
