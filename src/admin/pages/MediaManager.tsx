@@ -10,10 +10,11 @@ import type { MediaItem, MediaType, MediaCamp, MediaCategory } from '@/types'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CAMPS: { value: MediaCamp | 'all'; label: string }[] = [
-  { value: 'all',        label: 'All Camps'      },
-  { value: 'south_gaza', label: 'South Gaza'     },
-  { value: 'north_gaza', label: 'North Gaza'     },
-  { value: 'refugees',   label: 'Gazan Refugees' },
+  { value: 'all',        label: 'All Camps'        },
+  { value: 'south_gaza', label: 'South Gaza'       },
+  { value: 'north_gaza', label: 'North Gaza'       },
+  { value: 'refugees',   label: 'Gazan Refugees'   },
+  { value: 'general',    label: 'General / Other'  },
 ]
 
 const CATEGORIES: { value: MediaCategory; label: string }[] = [
@@ -168,14 +169,11 @@ function UploadModal({
         sort_order:       editing?.sort_order    ?? 0,
       }
 
-      console.log('[MediaManager] payload:', JSON.stringify(payload, null, 2))
       if (editing) {
         const { error: e } = await supabase.from('media_items').update(payload).eq('id', editing.id)
-        console.log('[MediaManager] update error:', e)
         if (e) throw e
       } else {
         const { error: e } = await supabase.from('media_items').insert(payload)
-        console.log('[MediaManager] insert error:', e)
         if (e) throw e
       }
 

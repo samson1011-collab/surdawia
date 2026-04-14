@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   MapPin, Users, Droplets, Package, Heart, Home, TrendingUp,
@@ -246,19 +246,24 @@ function parseEntryMonth(dateStr: string): { year: number; month: number } | nul
 }
 
 function getEntryMedia(
-  allMedia: MediaItem[],
-  entry:    MissionEntry,
-  camp:     MediaCamp,
+  allMedia:     MediaItem[],
+  entry:        MissionEntry,
+  camp:         MediaCamp,
+  isMostRecent: boolean,
   limit = 3,
 ): MediaItem[] {
   const em = parseEntryMonth(entry.date)
   if (!em) return []
+
+  const entryCenter = new Date(em.year, em.month, 15)
+  const WINDOW_MS   = 45 * 24 * 60 * 60 * 1000 // 45 days
+
   return allMedia
     .filter(item => {
       if (item.camp !== camp) return false
-      if (!item.captured_at) return false
+      if (!item.captured_at) return isMostRecent // null dates → most recent entry only
       const d = new Date(item.captured_at)
-      return d.getFullYear() === em.year && d.getMonth() === em.month
+      return Math.abs(d.getTime() - entryCenter.getTime()) <= WINDOW_MS
     })
     .slice(0, limit)
 }
@@ -341,6 +346,13 @@ function MediaLightbox({
               allowFullScreen
               className="absolute inset-0 w-full h-full"
             />
+          </div>
+        ) : current.type === 'video' ? (
+          <div className="flex items-center justify-center py-16 bg-black/30">
+            <div className="text-center">
+              <Play size={32} className="text-chalk/20 mx-auto mb-3" />
+              <p className="font-sans text-sm text-chalk/40">Video unavailable — YouTube ID missing</p>
+            </div>
           </div>
         ) : (
           <img
@@ -534,7 +546,7 @@ function CampSection({
       {entries && (
         <div className="relative max-w-2xl">
           {entries.map((entry, i) => {
-            const em = getEntryMedia(timelineMedia, entry, campValue)
+            const em = getEntryMedia(timelineMedia, entry, campValue, i === 0)
             return (
               <TimelineEntryCard
                 key={entry.id}
@@ -565,7 +577,7 @@ function CampSection({
             </div>
             <div className="relative max-w-2xl">
               {sub.entries.map((entry, i) => {
-                const em = getEntryMedia(timelineMedia, entry, campValue)
+                const em = getEntryMedia(timelineMedia, entry, campValue, i === 0)
                 return (
                   <TimelineEntryCard
                     key={entry.id}
@@ -661,9 +673,15 @@ function GridView({
   }
 
   return (
-    <div>
+    <div className="relative">
+      {/* Overlay spinner during filter changes (items already loaded) */}
+      {loading && items.length > 0 && (
+        <div className="absolute inset-0 z-10 bg-chalk/70 backdrop-blur-[2px] flex items-center justify-center rounded-xl">
+          <Loader2 size={24} className="animate-spin text-ink/40" />
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {loading
+        {loading && items.length === 0
           ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
               <div key={i} className="bg-chalk rounded-2xl border border-black/8 overflow-hidden animate-pulse">
                 <div className="aspect-video bg-black/5" />
@@ -847,36 +865,54 @@ function MobileFilters({
 export default function Timeline() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const camp        = (searchParams.get('camp')     ?? 'all')      as CampFilter
-  const categorySlug = searchParams.get('category') ?? 'all'
-  const view         = (searchParams.get('view')    ?? 'grid') as ViewMode
-  const category     = slugToCategory(categorySlug)                 as CategoryFilter
+  // ── Atomic filter state — initialized from URL once on mount ─────────────────
+  const [filters, setFiltersState] = useState(() => ({
+    camp:         (searchParams.get('camp')     ?? 'all') as CampFilter,
+    categorySlug: searchParams.get('category') ?? 'all',
+    view:         (searchParams.get('view')     ?? 'grid') as ViewMode,
+  }))
 
-  // Media for inline timeline strips (all camps, category-filtered)
+  const category    = slugToCategory(filters.categorySlug) as CategoryFilter
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Media for inline timeline strips ────────────────────────────────────────
   const [timelineMedia, setTimelineMedia] = useState<MediaItem[]>([])
 
-  // Grid view state
+  // ── Grid state ───────────────────────────────────────────────────────────────
   const [gridItems,      setGridItems]      = useState<MediaItem[]>([])
   const [gridPage,       setGridPage]       = useState(0)
   const [gridTotalCount, setGridTotalCount] = useState(0)
   const [gridLoading,    setGridLoading]    = useState(false)
-
   const gridTotalPages = Math.max(1, Math.ceil(gridTotalCount / PAGE_SIZE))
 
-  // Shared lightbox
+  // ── DB timeline entries — fallback to hardcoded if table is empty ────────────
+  const [dbEntriesByCamp, setDbEntriesByCamp] = useState<Partial<Record<MediaCamp, MissionEntry[]>>>({})
+
+  // ── Lightbox ─────────────────────────────────────────────────────────────────
   const [lightbox, setLightbox] = useState<{ item: MediaItem; items: MediaItem[] } | null>(null)
 
-  // ── URL helpers ─────────────────────────────────────────────────────────────
-
-  const setFilter = (key: string, value: string) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev)
-      next.set(key, value)
-      return next
-    }, { replace: true })
+  // ── Atomic filter update with 150ms debounce ─────────────────────────────────
+  const setFilter = (key: keyof typeof filters, value: string) => {
+    const isContentFilter = key === 'camp' || key === 'categorySlug'
+    if (isContentFilter && filters.view === 'grid') setGridLoading(true)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      // React 18 batches all state updates inside setTimeout automatically
+      setFiltersState(prev => ({ ...prev, [key]: value }))
+      if (isContentFilter) setGridPage(0)
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev)
+        next.set(key === 'categorySlug' ? 'category' : key, value)
+        return next
+      }, { replace: true })
+    }, 150)
   }
 
+  // ── Open grid view for a camp (direct nav action — no debounce) ──────────────
   const openGrid = (campValue?: CampFilter) => {
+    const campUpdate = campValue && campValue !== 'all' ? { camp: campValue } : {}
+    setFiltersState(prev => ({ ...prev, view: 'grid' as ViewMode, ...campUpdate }))
+    setGridPage(0)
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
       next.set('view', 'grid')
@@ -885,53 +921,75 @@ export default function Timeline() {
     }, { replace: true })
   }
 
-  // ── Media fetch: timeline strips ────────────────────────────────────────────
-
+  // ── Fetch: DB timeline entries with hardcoded fallback ───────────────────────
   useEffect(() => {
+    const MONTH_NAMES = ['January','February','March','April','May','June',
+                         'July','August','September','October','November','December']
+    supabase
+      .from('timeline_entries')
+      .select('*')
+      .eq('is_published', true)
+      .order('date', { ascending: false })
+      .then(({ data }) => {
+        if (!data || data.length === 0) return // empty → keep hardcoded fallback
+        const grouped: Partial<Record<MediaCamp, MissionEntry[]>> = {}
+        ;(data as Record<string, unknown>[]).forEach(row => {
+          const c = ((row.camp as string) ?? 'general') as MediaCamp
+          if (!grouped[c]) grouped[c] = []
+          const d = new Date(row.date as string)
+          grouped[c]!.push({
+            id:          row.id as number,
+            date:        `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`,
+            title:       row.title as string,
+            description: row.description as string,
+            impact:      (row.impact_metric as string) ?? '',
+            location:    (row.location as string) ?? '',
+            tag:         (row.tag as string) ?? CAMP_LABELS[c] ?? c,
+          })
+        })
+        setDbEntriesByCamp(grouped)
+      })
+  }, [])
+
+  // ── Fetch: timeline strip media (camp-filtered server-side) ──────────────────
+  useEffect(() => {
+    if (filters.view !== 'timeline') return
     let q = supabase
       .from('media_items')
       .select('*')
       .eq('is_published', true)
       .order('captured_at', { ascending: false })
       .limit(200)
-    if (category !== 'all') q = q.eq('category', category)
+    if (filters.camp !== 'all') q = q.eq('camp', filters.camp)
+    if (category      !== 'all') q = q.eq('category', category)
     q.then(({ data, error }) => {
       if (error) { console.error('[Timeline] media fetch error:', error.message); return }
       setTimelineMedia((data as MediaItem[]) ?? [])
     })
-  }, [category])
+  }, [filters.camp, filters.categorySlug, filters.view])
 
-  // ── Media fetch: grid view ──────────────────────────────────────────────────
-
+  // ── Fetch: grid media (single effect — no race condition) ────────────────────
   useEffect(() => {
-    if (view !== 'grid') return
+    if (filters.view !== 'grid') return
     setGridLoading(true)
-
-    const run = async () => {
-      let q = supabase
-        .from('media_items')
-        .select('*', { count: 'exact' })
-        .eq('is_published', true)
-        .order('captured_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-        .range(gridPage * PAGE_SIZE, gridPage * PAGE_SIZE + PAGE_SIZE - 1)
-      if (camp !== 'all')     q = q.eq('camp', camp)
-      if (category !== 'all') q = q.eq('category', category)
-      const { data, error, count } = await q
+    let q = supabase
+      .from('media_items')
+      .select('*', { count: 'exact' })
+      .eq('is_published', true)
+      .order('captured_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .range(gridPage * PAGE_SIZE, gridPage * PAGE_SIZE + PAGE_SIZE - 1)
+    if (filters.camp !== 'all') q = q.eq('camp', filters.camp)
+    if (category      !== 'all') q = q.eq('category', category)
+    q.then(({ data, error, count }) => {
       if (error) { console.error('[Grid] fetch error:', error.message) }
       else {
         setGridItems((data ?? []) as MediaItem[])
         setGridTotalCount(count ?? 0)
       }
       setGridLoading(false)
-    }
-    run()
-  }, [camp, category, view, gridPage])
-
-  // Reset to page 0 when filters change
-  useEffect(() => {
-    setGridPage(0)
-  }, [camp, category])
+    })
+  }, [filters.camp, filters.categorySlug, filters.view, gridPage])
 
   const goToGridPage = (p: number) => {
     setGridPage(p)
@@ -949,7 +1007,7 @@ export default function Timeline() {
         body:  'Our South Gaza camp has been active since October 2024 — providing food, clean water, and essential supplies to displaced families in Khan Younis, Rafah, and the surrounding areas.',
       },
       stats:   SOUTH_STATS,
-      entries: SOUTH_ENTRIES,
+      entries: dbEntriesByCamp['south_gaza'] ?? SOUTH_ENTRIES,
     },
     {
       campValue: 'north_gaza' as MediaCamp,
@@ -959,7 +1017,7 @@ export default function Timeline() {
         body:  'Northern Gaza faces the most severe access restrictions. Our North Gaza network operates through trusted local contacts to reach Jabalia, Beit Lahiya, and Gaza City with food, medicine, and supplies.',
       },
       stats:   NORTH_STATS,
-      entries: NORTH_ENTRIES,
+      entries: dbEntriesByCamp['north_gaza'] ?? NORTH_ENTRIES,
     },
     {
       campValue: 'refugees' as MediaCamp,
@@ -991,9 +1049,9 @@ export default function Timeline() {
     },
   ]
 
-  const visibleSections = camp === 'all'
+  const visibleSections = filters.camp === 'all'
     ? allSections
-    : allSections.filter(s => s.campValue === camp)
+    : allSections.filter(s => s.campValue === filters.camp)
 
   return (
     <div className="bg-chalk-off min-h-screen">
@@ -1040,10 +1098,10 @@ export default function Timeline() {
 
       {/* ── Mobile filters ─────────────────────────────────────────────── */}
       <MobileFilters
-        camp={camp}
-        categorySlug={categorySlug}
+        camp={filters.camp}
+        categorySlug={filters.categorySlug}
         onCampChange={v => setFilter('camp', v)}
-        onCategoryChange={slug => setFilter('category', slug)}
+        onCategoryChange={slug => setFilter('categorySlug', slug)}
       />
 
       {/* ── Main layout ────────────────────────────────────────────────── */}
@@ -1051,10 +1109,10 @@ export default function Timeline() {
 
         {/* Desktop sidebar */}
         <FilterSidebar
-          camp={camp}
-          categorySlug={categorySlug}
+          camp={filters.camp}
+          categorySlug={filters.categorySlug}
           onCampChange={v => setFilter('camp', v)}
-          onCategoryChange={slug => setFilter('category', slug)}
+          onCategoryChange={slug => setFilter('categorySlug', slug)}
         />
 
         {/* Main content */}
@@ -1070,7 +1128,7 @@ export default function Timeline() {
                   key={value}
                   onClick={() => setFilter('camp', value)}
                   className={`px-4 py-2 rounded-lg font-sans text-sm font-medium transition-colors cursor-pointer ${
-                    camp === value
+                    filters.camp === value
                       ? 'bg-rouge text-chalk'
                       : 'text-ink/50 hover:text-ink hover:bg-black/5'
                   }`}
@@ -1086,14 +1144,14 @@ export default function Timeline() {
               <div
                 className="absolute top-1 bottom-1 rounded-md bg-chalk shadow-sm transition-all duration-300 ease-in-out"
                 style={{
-                  left:  view === 'timeline' ? '4px'  : '50%',
-                  right: view === 'timeline' ? '50%'  : '4px',
+                  left:  filters.view === 'timeline' ? '4px'  : '50%',
+                  right: filters.view === 'timeline' ? '50%'  : '4px',
                 }}
               />
               <button
                 onClick={() => setFilter('view', 'timeline')}
                 className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors duration-200 cursor-pointer ${
-                  view === 'timeline' ? 'text-ink' : 'text-ink/50 hover:text-ink'
+                  filters.view === 'timeline' ? 'text-ink' : 'text-ink/50 hover:text-ink'
                 }`}
               >
                 <LayoutList size={14} />
@@ -1102,7 +1160,7 @@ export default function Timeline() {
               <button
                 onClick={() => setFilter('view', 'grid')}
                 className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors duration-200 cursor-pointer ${
-                  view === 'grid' ? 'text-ink' : 'text-ink/50 hover:text-ink'
+                  filters.view === 'grid' ? 'text-ink' : 'text-ink/50 hover:text-ink'
                 }`}
               >
                 <Grid3X3 size={14} />
@@ -1112,7 +1170,7 @@ export default function Timeline() {
           </div>
 
           {/* ── Timeline view ────────────────────────────────────────── */}
-          {view === 'timeline' && (
+          {filters.view === 'timeline' && (
             <div>
               {visibleSections.map((section, si) => (
                 <CampSection
@@ -1132,7 +1190,7 @@ export default function Timeline() {
           )}
 
           {/* ── Grid view ────────────────────────────────────────────── */}
-          {view === 'grid' && (
+          {filters.view === 'grid' && (
             <GridView
               items={gridItems}
               page={gridPage}
