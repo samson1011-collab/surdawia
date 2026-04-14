@@ -633,15 +633,17 @@ function GridCard({
 
 function GridView({
   items,
-  hasMore,
+  page,
+  totalPages,
   loading,
-  onLoadMore,
+  onPage,
   onOpenMedia,
 }: {
   items:       MediaItem[]
-  hasMore:     boolean
+  page:        number
+  totalPages:  number
   loading:     boolean
-  onLoadMore:  () => void
+  onPage:      (p: number) => void
   onOpenMedia: (item: MediaItem, items: MediaItem[]) => void
 }) {
   if (!loading && items.length === 0) {
@@ -659,36 +661,59 @@ function GridView({
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {items.map(item => (
-          <GridCard
-            key={item.id}
-            item={item}
-            onClick={() => onOpenMedia(item, items)}
-          />
-        ))}
-        {loading && items.length === 0 && (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-chalk rounded-2xl border border-black/8 overflow-hidden animate-pulse">
-              <div className="aspect-video bg-black/5" />
-              <div className="p-4 space-y-2">
-                <div className="h-3 bg-black/5 rounded w-1/3" />
-                <div className="h-4 bg-black/5 rounded w-3/4" />
-                <div className="h-3 bg-black/5 rounded w-1/2" />
+        {loading
+          ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <div key={i} className="bg-chalk rounded-2xl border border-black/8 overflow-hidden animate-pulse">
+                <div className="aspect-video bg-black/5" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 bg-black/5 rounded w-1/3" />
+                  <div className="h-4 bg-black/5 rounded w-3/4" />
+                  <div className="h-3 bg-black/5 rounded w-1/2" />
+                </div>
               </div>
-            </div>
-          ))
-        )}
+            ))
+          : items.map(item => (
+              <GridCard
+                key={item.id}
+                item={item}
+                onClick={() => onOpenMedia(item, items)}
+              />
+            ))
+        }
       </div>
 
-      {(hasMore || loading) && items.length > 0 && (
-        <div className="mt-10 flex justify-center">
+      {totalPages > 1 && (
+        <div className="mt-10 flex items-center justify-center gap-1">
           <button
-            onClick={onLoadMore}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl border border-black/12 font-sans text-sm text-ink/60 hover:text-ink hover:border-black/25 hover:bg-black/3 transition-all disabled:opacity-50 cursor-pointer"
+            onClick={() => onPage(page - 1)}
+            disabled={page === 0}
+            className="p-2 rounded-lg border border-black/12 text-ink/50 hover:text-ink hover:border-black/25 hover:bg-black/3 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            aria-label="Previous page"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-            {loading ? 'Loading…' : 'Load more'}
+            <ChevronLeft size={16} />
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => onPage(i)}
+              className={`min-w-[36px] h-9 px-2 rounded-lg border font-sans text-sm transition-all cursor-pointer ${
+                i === page
+                  ? 'border-ink bg-ink text-chalk'
+                  : 'border-black/12 text-ink/50 hover:text-ink hover:border-black/25 hover:bg-black/3'
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+
+          <button
+            onClick={() => onPage(page + 1)}
+            disabled={page === totalPages - 1}
+            className="p-2 rounded-lg border border-black/12 text-ink/50 hover:text-ink hover:border-black/25 hover:bg-black/3 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
           </button>
         </div>
       )}
@@ -829,10 +854,12 @@ export default function Timeline() {
   const [timelineMedia, setTimelineMedia] = useState<MediaItem[]>([])
 
   // Grid view state
-  const [gridItems,   setGridItems]   = useState<MediaItem[]>([])
-  const [gridPage,    setGridPage]    = useState(0)
-  const [hasMore,     setHasMore]     = useState(true)
-  const [gridLoading, setGridLoading] = useState(false)
+  const [gridItems,      setGridItems]      = useState<MediaItem[]>([])
+  const [gridPage,       setGridPage]       = useState(0)
+  const [gridTotalCount, setGridTotalCount] = useState(0)
+  const [gridLoading,    setGridLoading]    = useState(false)
+
+  const gridTotalPages = Math.max(1, Math.ceil(gridTotalCount / PAGE_SIZE))
 
   // Shared lightbox
   const [lightbox, setLightbox] = useState<{ item: MediaItem; items: MediaItem[] } | null>(null)
@@ -876,54 +903,37 @@ export default function Timeline() {
 
   useEffect(() => {
     if (view !== 'grid') return
-    setGridItems([])
-    setGridPage(0)
-    setHasMore(true)
     setGridLoading(true)
 
     const run = async () => {
       let q = supabase
         .from('media_items')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('is_published', true)
         .order('captured_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
-        .range(0, PAGE_SIZE - 1)
+        .range(gridPage * PAGE_SIZE, gridPage * PAGE_SIZE + PAGE_SIZE - 1)
       if (camp !== 'all')     q = q.eq('camp', camp)
       if (category !== 'all') q = q.eq('category', category)
-      const { data, error } = await q
+      const { data, error, count } = await q
       if (error) { console.error('[Grid] fetch error:', error.message) }
       else {
-        const items = (data ?? []) as MediaItem[]
-        setGridItems(items)
-        setHasMore(items.length === PAGE_SIZE)
+        setGridItems((data ?? []) as MediaItem[])
+        setGridTotalCount(count ?? 0)
       }
       setGridLoading(false)
     }
     run()
-  }, [camp, category, view])
+  }, [camp, category, view, gridPage])
 
-  const loadMore = async () => {
-    setGridLoading(true)
-    const nextPage = gridPage + 1
-    let q = supabase
-      .from('media_items')
-      .select('*')
-      .eq('is_published', true)
-      .order('captured_at', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
-      .range(nextPage * PAGE_SIZE, nextPage * PAGE_SIZE + PAGE_SIZE - 1)
-    if (camp !== 'all')     q = q.eq('camp', camp)
-    if (category !== 'all') q = q.eq('category', category)
-    const { data, error } = await q
-    if (error) { console.error('[Grid] load more error:', error.message) }
-    else {
-      const items = (data ?? []) as MediaItem[]
-      setGridItems(prev => [...prev, ...items])
-      setHasMore(items.length === PAGE_SIZE)
-      setGridPage(nextPage)
-    }
-    setGridLoading(false)
+  // Reset to page 0 when filters change
+  useEffect(() => {
+    setGridPage(0)
+  }, [camp, category])
+
+  const goToGridPage = (p: number) => {
+    setGridPage(p)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // ── Sections config ─────────────────────────────────────────────────────────
@@ -1119,9 +1129,10 @@ export default function Timeline() {
           {view === 'grid' && (
             <GridView
               items={gridItems}
-              hasMore={hasMore}
+              page={gridPage}
+              totalPages={gridTotalPages}
               loading={gridLoading}
-              onLoadMore={loadMore}
+              onPage={goToGridPage}
               onOpenMedia={(item, items) => setLightbox({ item, items })}
             />
           )}
