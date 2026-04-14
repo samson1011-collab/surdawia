@@ -162,11 +162,14 @@ function UploadModal({
         sort_order:       editing?.sort_order    ?? 0,
       }
 
+      console.log('[MediaManager] payload:', JSON.stringify(payload, null, 2))
       if (editing) {
         const { error: e } = await supabase.from('media_items').update(payload).eq('id', editing.id)
+        console.log('[MediaManager] update error:', e)
         if (e) throw e
       } else {
         const { error: e } = await supabase.from('media_items').insert(payload)
+        console.log('[MediaManager] insert error:', e)
         if (e) throw e
       }
 
