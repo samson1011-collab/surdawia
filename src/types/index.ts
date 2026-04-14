@@ -33,7 +33,15 @@ export interface Donation {
 // ─── Media ───────────────────────────────────────────────────────────────────
 
 export type MediaType = 'image' | 'video'
-export type MediaCategory = 'relief_work' | 'timeline' | 'gratitude' | 'general'
+export type MediaCategory =
+  | 'Food Distribution'
+  | 'Water & Wells'
+  | 'Medical'
+  | 'Shelter'
+  | 'Education'
+  | 'General Relief'
+  | 'Community'
+export type MediaCamp = 'south_gaza' | 'north_gaza' | 'refugees' | 'general'
 
 export interface MediaItem {
   id: string
@@ -43,8 +51,8 @@ export interface MediaItem {
   category: MediaCategory
   url: string
   thumbnail_url: string | null
-  dedicated_to_donor_id: string | null
-  dedicated_to_name: string | null
+  youtube_video_id: string | null
+  camp: MediaCamp
   location: string | null
   captured_at: string | null
   is_published: boolean

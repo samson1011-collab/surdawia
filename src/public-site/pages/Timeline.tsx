@@ -1,5 +1,8 @@
-import { useState } from 'react'
-import { MapPin, Users, Droplets, Package, Heart, Home, TrendingUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { MapPin, Users, Droplets, Package, Heart, Home, TrendingUp, Play } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import type { MediaItem, MediaCamp } from '@/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -181,6 +184,119 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'north',    label: 'North Gaza Camp'  },
   { key: 'refugees', label: 'Gazan Refugees'   },
 ]
+
+// ── Media strip helpers ───────────────────────────────────────────────────────
+
+function thumb(item: MediaItem): string {
+  if (item.type === 'video' && item.youtube_video_id)
+    return `https://img.youtube.com/vi/${item.youtube_video_id}/hqdefault.jpg`
+  return item.thumbnail_url ?? item.url
+}
+
+// ── Lightbox (shared with timeline) ──────────────────────────────────────────
+
+function MediaLightbox({
+  item,
+  onClose,
+}: {
+  item: MediaItem
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink/92" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-3xl rounded-2xl overflow-hidden bg-ink shadow-2xl">
+        {item.type === 'video' && item.youtube_video_id ? (
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${item.youtube_video_id}?autoplay=1`}
+              title={item.title}
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
+        ) : (
+          <img src={item.url} alt={item.title} className="w-full max-h-[65vh] object-contain bg-black" />
+        )}
+        <div className="p-5">
+          <h3 className="font-display text-xl text-chalk mb-1">{item.title}</h3>
+          {item.description && (
+            <p className="font-sans text-sm text-chalk/50 leading-relaxed">{item.description}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Media Strip ───────────────────────────────────────────────────────────────
+
+function MediaStrip({ camp, campSlug }: { camp: MediaCamp; campSlug: string }) {
+  const [items,     setItems]    = useState<MediaItem[]>([])
+  const [lightbox,  setLightbox] = useState<MediaItem | null>(null)
+
+  useEffect(() => {
+    supabase
+      .from('media_items')
+      .select('*')
+      .eq('is_published', true)
+      .eq('camp', camp)
+      .order('created_at', { ascending: false })
+      .limit(6)
+      .then(({ data }) => setItems((data as MediaItem[]) ?? []))
+  }, [camp])
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="mt-10 mb-2">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-0.5 rounded-full bg-rouge" />
+          <h3 className="font-display text-lg text-ink">Photos &amp; Videos</h3>
+        </div>
+        <Link
+          to={`/gallery?camp=${campSlug}`}
+          className="font-sans text-xs text-rouge hover:text-rouge-light transition-colors"
+        >
+          View all →
+        </Link>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
+        {items.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setLightbox(item)}
+            className="shrink-0 relative w-36 h-28 rounded-xl overflow-hidden bg-black/8 group"
+          >
+            <img
+              src={thumb(item)}
+              alt={item.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            {item.type === 'video' && (
+              <div className="absolute inset-0 flex items-center justify-center bg-ink/20">
+                <div className="w-8 h-8 bg-ink/60 group-hover:bg-rouge/80 rounded-full flex items-center justify-center transition-colors">
+                  <Play size={13} className="text-chalk ml-0.5" fill="white" />
+                </div>
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {lightbox && <MediaLightbox item={lightbox} onClose={() => setLightbox(null)} />}
+    </div>
+  )
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -399,6 +515,9 @@ export default function Timeline() {
                 <TimelineEntry key={entry.id} entry={entry} last={i === SOUTH_ENTRIES.length - 1} />
               ))}
             </div>
+            <div className="max-w-2xl">
+              <MediaStrip camp="south_gaza" campSlug="south_gaza" />
+            </div>
           </>
         )}
 
@@ -416,6 +535,9 @@ export default function Timeline() {
                 <TimelineEntry key={entry.id} entry={entry} last={i === NORTH_ENTRIES.length - 1} />
               ))}
             </div>
+            <div className="max-w-2xl">
+              <MediaStrip camp="north_gaza" campSlug="north_gaza" />
+            </div>
           </>
         )}
 
@@ -423,6 +545,7 @@ export default function Timeline() {
         {activeTab === 'refugees' && (
           <div className="max-w-2xl">
             <RefugeeTab />
+            <MediaStrip camp="refugees" campSlug="refugees" />
           </div>
         )}
       </div>
