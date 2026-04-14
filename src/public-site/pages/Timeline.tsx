@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { MapPin, Users, Droplets, Package, Heart, Home, TrendingUp, Play } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  MapPin, Users, Droplets, Package, Heart, Home, TrendingUp,
+  Play, X, ChevronLeft, ChevronRight, LayoutList, Grid3X3,
+  Loader2,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { MediaItem, MediaCamp } from '@/types'
+import type { MediaItem, MediaCamp, MediaCategory } from '@/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type CampFilter     = 'all' | MediaCamp
+type CategoryFilter = 'all' | MediaCategory
+type ViewMode       = 'timeline' | 'grid'
+
 interface MissionEntry {
   id:          number
-  date:        string
+  date:        string   // "April 2025"
   title:       string
   description: string
   impact:      string
@@ -20,6 +28,46 @@ interface StatItem {
   label: string
   value: string
   icon:  React.ElementType
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const CAMP_OPTIONS: { value: CampFilter; label: string }[] = [
+  { value: 'all',        label: 'All'            },
+  { value: 'south_gaza', label: 'South Gaza'     },
+  { value: 'north_gaza', label: 'North Gaza'     },
+  { value: 'refugees',   label: 'Gazan Refugees' },
+]
+
+const CATEGORY_OPTIONS: { slug: string; label: string; dbValue: CategoryFilter }[] = [
+  { slug: 'all',            label: 'All',              dbValue: 'all'               },
+  { slug: 'food',           label: 'Food',             dbValue: 'Food Distribution' },
+  { slug: 'water_wells',    label: 'Water & Wells',    dbValue: 'Water & Wells'     },
+  { slug: 'medical',        label: 'Medical & Health', dbValue: 'Medical'           },
+  { slug: 'shelter',        label: 'Shelter',          dbValue: 'Shelter'           },
+  { slug: 'education',      label: 'Education',        dbValue: 'Education'         },
+  { slug: 'general_relief', label: 'General Relief',   dbValue: 'General Relief'    },
+]
+
+const CAMP_BADGE: Record<MediaCamp, string> = {
+  south_gaza: 'bg-rouge/10 text-rouge',
+  north_gaza: 'bg-sky-500/10 text-sky-600',
+  refugees:   'bg-forest/10 text-forest',
+  general:    'bg-ink/8 text-ink/50',
+}
+
+const CAMP_LABELS: Record<MediaCamp, string> = {
+  south_gaza: 'South Gaza',
+  north_gaza: 'North Gaza',
+  refugees:   'Gazan Refugees',
+  general:    'General',
+}
+
+const PAGE_SIZE = 12
+
+const MONTH_MAP: Record<string, number> = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
 }
 
 // ── South Gaza data ───────────────────────────────────────────────────────────
@@ -73,10 +121,10 @@ const SOUTH_ENTRIES: MissionEntry[] = [
 ]
 
 const SOUTH_STATS: StatItem[] = [
-  { label: 'Families Served',     value: '1,580+', icon: Users    },
-  { label: 'Meals Distributed',   value: '22,800+', icon: Package  },
-  { label: 'Water Delivered',     value: '80,000 L', icon: Droplets },
-  { label: 'Active Volunteers',   value: '14',      icon: Heart    },
+  { label: 'Families Served',   value: '1,580+',   icon: Users    },
+  { label: 'Meals Distributed', value: '22,800+',  icon: Package  },
+  { label: 'Water Delivered',   value: '80,000 L', icon: Droplets },
+  { label: 'Active Volunteers', value: '14',        icon: Heart    },
 ]
 
 // ── North Gaza data ───────────────────────────────────────────────────────────
@@ -121,15 +169,15 @@ const NORTH_ENTRIES: MissionEntry[] = [
 ]
 
 const NORTH_STATS: StatItem[] = [
-  { label: 'Families Served',     value: '960+',    icon: Users    },
-  { label: 'Hygiene Kits',        value: '1,400+',  icon: Package  },
-  { label: 'Patients Supported',  value: '400+',    icon: Heart    },
-  { label: 'Active Volunteers',   value: '9',       icon: TrendingUp },
+  { label: 'Families Served',    value: '960+',   icon: Users      },
+  { label: 'Hygiene Kits',       value: '1,400+', icon: Package    },
+  { label: 'Patients Supported', value: '400+',   icon: Heart      },
+  { label: 'Active Volunteers',  value: '9',       icon: TrendingUp },
 ]
 
 // ── Refugees data ─────────────────────────────────────────────────────────────
 
-const REFUGEE_ENTRIES: MissionEntry[] = [
+const REFUGEE_MEDICAL: MissionEntry[] = [
   {
     id:          1,
     date:        'April 2025',
@@ -139,6 +187,18 @@ const REFUGEE_ENTRIES: MissionEntry[] = [
     location:    'Egypt / Turkey',
     tag:         'Medical Refugees',
   },
+  {
+    id:          4,
+    date:        'November 2024',
+    title:       'Dialysis Patient Support',
+    description: 'Coordinated ongoing financial support for two Gazan patients requiring dialysis treatment outside Gaza. Covered medical bills, transport, and living expenses for accompanying family members.',
+    impact:      '2 patients sustained',
+    location:    'Jordan',
+    tag:         'Medical Refugees',
+  },
+]
+
+const REFUGEE_DISPLACED: MissionEntry[] = [
   {
     id:          2,
     date:        'March 2025',
@@ -157,35 +217,16 @@ const REFUGEE_ENTRIES: MissionEntry[] = [
     location:    'Alexandria, Egypt',
     tag:         'Displaced Refugees',
   },
-  {
-    id:          4,
-    date:        'November 2024',
-    title:       'Dialysis Patient Support',
-    description: 'Coordinated ongoing financial support for two Gazan patients requiring dialysis treatment outside Gaza. Covered medical bills, transport, and living expenses for accompanying family members.',
-    impact:      '2 patients sustained',
-    location:    'Jordan',
-    tag:         'Medical Refugees',
-  },
 ]
 
 const REFUGEE_STATS: StatItem[] = [
-  { label: 'Families Supported',  value: '55+',  icon: Users   },
-  { label: 'Medical Cases',       value: '5',    icon: Heart   },
-  { label: 'Housing Provided',    value: '7',    icon: Home    },
-  { label: 'Supply Kits',         value: '45+',  icon: Package },
+  { label: 'Families Supported', value: '55+', icon: Users   },
+  { label: 'Medical Cases',      value: '5',   icon: Heart   },
+  { label: 'Housing Provided',   value: '7',   icon: Home    },
+  { label: 'Supply Kits',        value: '45+', icon: Package },
 ]
 
-// ── Tab config ────────────────────────────────────────────────────────────────
-
-type TabKey = 'south' | 'north' | 'refugees'
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'south',    label: 'South Gaza Camp'  },
-  { key: 'north',    label: 'North Gaza Camp'  },
-  { key: 'refugees', label: 'Gazan Refugees'   },
-]
-
-// ── Media strip helpers ───────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function thumb(item: MediaItem): string {
   if (item.type === 'video' && item.youtube_video_id)
@@ -193,42 +234,131 @@ function thumb(item: MediaItem): string {
   return item.thumbnail_url ?? item.url
 }
 
-// ── Lightbox (shared with timeline) ──────────────────────────────────────────
+function parseEntryMonth(dateStr: string): { year: number; month: number } | null {
+  const parts = dateStr.trim().split(' ')
+  if (parts.length !== 2) return null
+  const month = MONTH_MAP[parts[0].toLowerCase()]
+  const year  = parseInt(parts[1], 10)
+  if (month === undefined || isNaN(year)) return null
+  return { year, month }
+}
+
+function getEntryMedia(
+  allMedia: MediaItem[],
+  entry:    MissionEntry,
+  camp:     MediaCamp,
+  limit = 3,
+): MediaItem[] {
+  const em = parseEntryMonth(entry.date)
+  if (!em) return []
+  return allMedia
+    .filter(item => {
+      if (item.camp !== camp) return false
+      if (!item.captured_at) return false
+      const d = new Date(item.captured_at)
+      return d.getFullYear() === em.year && d.getMonth() === em.month
+    })
+    .slice(0, limit)
+}
+
+function slugToCategory(slug: string): CategoryFilter {
+  return CATEGORY_OPTIONS.find(o => o.slug === slug)?.dbValue ?? 'all'
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+// ── MediaLightbox ─────────────────────────────────────────────────────────────
 
 function MediaLightbox({
-  item,
+  initialItem,
+  items,
   onClose,
 }: {
-  item: MediaItem
-  onClose: () => void
+  initialItem: MediaItem
+  items:       MediaItem[]
+  onClose:     () => void
 }) {
+  const [idx, setIdx] = useState(() => Math.max(0, items.findIndex(i => i.id === initialItem.id)))
+  const current  = items[idx] ?? initialItem
+  const hasPrev  = idx > 0
+  const hasNext  = idx < items.length - 1
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape')                  onClose()
+      if (e.key === 'ArrowLeft'  && hasPrev)   setIdx(i => i - 1)
+      if (e.key === 'ArrowRight' && hasNext)   setIdx(i => i + 1)
+    }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose])
+  }, [onClose, hasPrev, hasNext])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink/92" onClick={onClose} />
+
+      {hasPrev && (
+        <button
+          onClick={() => setIdx(i => i - 1)}
+          className="absolute left-3 md:left-6 z-20 w-10 h-10 rounded-full bg-chalk/10 hover:bg-chalk/20 flex items-center justify-center text-chalk transition-colors cursor-pointer"
+          aria-label="Previous"
+        >
+          <ChevronLeft size={20} />
+        </button>
+      )}
+      {hasNext && (
+        <button
+          onClick={() => setIdx(i => i + 1)}
+          className="absolute right-3 md:right-6 z-20 w-10 h-10 rounded-full bg-chalk/10 hover:bg-chalk/20 flex items-center justify-center text-chalk transition-colors cursor-pointer"
+          aria-label="Next"
+        >
+          <ChevronRight size={20} />
+        </button>
+      )}
+
       <div className="relative z-10 w-full max-w-3xl rounded-2xl overflow-hidden bg-ink shadow-2xl">
-        {item.type === 'video' && item.youtube_video_id ? (
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-chalk hover:bg-black/70 transition-colors cursor-pointer"
+          aria-label="Close"
+        >
+          <X size={16} />
+        </button>
+
+        {current.type === 'video' && current.youtube_video_id ? (
           <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
             <iframe
-              src={`https://www.youtube.com/embed/${item.youtube_video_id}?autoplay=1`}
-              title={item.title}
+              src={`https://www.youtube.com/embed/${current.youtube_video_id}?autoplay=1`}
+              title={current.title}
               allow="autoplay; fullscreen"
               allowFullScreen
               className="absolute inset-0 w-full h-full"
             />
           </div>
         ) : (
-          <img src={item.url} alt={item.title} className="w-full max-h-[65vh] object-contain bg-black" />
+          <img
+            src={current.url}
+            alt={current.title}
+            className="w-full max-h-[65vh] object-contain bg-black"
+          />
         )}
-        <div className="p-5">
-          <h3 className="font-display text-xl text-chalk mb-1">{item.title}</h3>
-          {item.description && (
-            <p className="font-sans text-sm text-chalk/50 leading-relaxed">{item.description}</p>
+
+        <div className="p-5 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-display text-xl text-chalk mb-1">{current.title}</h3>
+            {current.description && (
+              <p className="font-sans text-sm text-chalk/50 leading-relaxed">{current.description}</p>
+            )}
+          </div>
+          {items.length > 1 && (
+            <span className="font-sans text-xs text-chalk/30 shrink-0 mt-1">
+              {idx + 1} / {items.length}
+            </span>
           )}
         </div>
       </div>
@@ -236,114 +366,63 @@ function MediaLightbox({
   )
 }
 
-// ── Media Strip ───────────────────────────────────────────────────────────────
+// ── InlineMediaStrip ──────────────────────────────────────────────────────────
 
-function MediaStrip({ camp, campSlug }: { camp: MediaCamp; campSlug: string }) {
-  const [items,     setItems]    = useState<MediaItem[]>([])
-  const [lightbox,  setLightbox] = useState<MediaItem | null>(null)
-
-  useEffect(() => {
-    supabase
-      .from('media_items')
-      .select('*')
-      .eq('is_published', true)
-      .eq('camp', camp)
-      .order('created_at', { ascending: false })
-      .limit(6)
-      .then(({ data }) => setItems((data as MediaItem[]) ?? []))
-  }, [camp])
-
-  if (items.length === 0) return null
+function InlineMediaStrip({
+  media,
+  onOpen,
+  onViewAll,
+}: {
+  media:     MediaItem[]
+  onOpen:    (item: MediaItem) => void
+  onViewAll: () => void
+}) {
+  if (media.length === 0) return null
 
   return (
-    <div className="mt-10 mb-2">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-0.5 rounded-full bg-rouge" />
-          <h3 className="font-display text-lg text-ink">Photos &amp; Videos</h3>
-        </div>
-        <Link
-          to={`/gallery?camp=${campSlug}`}
-          className="font-sans text-xs text-rouge hover:text-rouge-light transition-colors"
+    <div className="mt-4 pt-4 border-t border-black/6">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="font-sans text-[11px] text-ink/35 uppercase tracking-widest">Photos &amp; Videos</span>
+        <button
+          onClick={onViewAll}
+          className="font-sans text-xs text-rouge hover:text-rouge-light transition-colors cursor-pointer"
         >
-          View all →
-        </Link>
+          View all media →
+        </button>
       </div>
-
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
-        {items.map(item => (
+      <div className="flex gap-2">
+        {media.map(item => (
           <button
             key={item.id}
-            onClick={() => setLightbox(item)}
-            className="shrink-0 relative w-36 h-28 rounded-xl overflow-hidden bg-black/8 group"
+            onClick={() => onOpen(item)}
+            className="shrink-0 relative w-24 h-20 rounded-xl overflow-hidden bg-black/8 group cursor-pointer"
           >
             <img
               src={thumb(item)}
               alt={item.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
             {item.type === 'video' && (
-              <div className="absolute inset-0 flex items-center justify-center bg-ink/20">
-                <div className="w-8 h-8 bg-ink/60 group-hover:bg-rouge/80 rounded-full flex items-center justify-center transition-colors">
-                  <Play size={13} className="text-chalk ml-0.5" fill="white" />
+              <div className="absolute inset-0 flex items-center justify-center bg-ink/25">
+                <div className="w-7 h-7 bg-ink/60 group-hover:bg-rouge/80 rounded-full flex items-center justify-center transition-colors">
+                  <Play size={10} className="text-chalk ml-0.5" fill="white" />
                 </div>
               </div>
             )}
           </button>
         ))}
       </div>
-
-      {lightbox && <MediaLightbox item={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function TimelineEntry({ entry, last = false }: { entry: MissionEntry; last?: boolean }) {
-  return (
-    <div className="relative flex gap-5 pb-10">
-      {/* Vertical line */}
-      {!last && (
-        <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-black/10" />
-      )}
-
-      {/* Dot */}
-      <div className="relative z-10 mt-1 shrink-0 w-6 h-6 rounded-full bg-rouge border-4 border-chalk-off shadow-sm" />
-
-      {/* Card */}
-      <div className="flex-1 bg-white rounded-2xl border border-black/8 shadow-sm p-5 -mt-0.5">
-        {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-          <div>
-            <span className="font-sans text-xs text-ink/40">{entry.date}</span>
-            <h3 className="font-display text-lg text-ink leading-snug mt-0.5">{entry.title}</h3>
-          </div>
-          <span className="font-sans text-xs px-2.5 py-1 rounded-full bg-rouge/8 text-rouge border border-rouge/15 shrink-0">
-            {entry.tag}
-          </span>
-        </div>
-
-        <p className="font-sans text-sm text-ink/55 leading-relaxed mb-4">{entry.description}</p>
-
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <span className="flex items-center gap-1 font-sans text-xs text-ink/40">
-            <MapPin size={11} /> {entry.location}
-          </span>
-          <span className="flex items-center gap-1.5 font-sans text-xs font-medium text-forest bg-forest/10 px-2.5 py-1 rounded-full">
-            <Users size={10} /> {entry.impact}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
+// ── StatsBar ──────────────────────────────────────────────────────────────────
 
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
       {stats.map(({ label, value, icon: Icon }) => (
-        <div key={label} className="bg-white rounded-2xl border border-black/8 shadow-sm p-5 text-center">
+        <div key={label} className="bg-chalk rounded-2xl border border-black/8 shadow-sm p-5 text-center">
           <div className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-forest/10 mb-3">
             <Icon size={16} className="text-forest" />
           </div>
@@ -354,6 +433,8 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
     </div>
   )
 }
+
+// ── SectionIntro ──────────────────────────────────────────────────────────────
 
 function SectionIntro({ tag, title, body }: { tag: string; title: string; body: string }) {
   return (
@@ -368,85 +449,555 @@ function SectionIntro({ tag, title, body }: { tag: string; title: string; body: 
   )
 }
 
-// ── Refugee tab ───────────────────────────────────────────────────────────────
+// ── TimelineEntryCard ─────────────────────────────────────────────────────────
 
-function RefugeeTab() {
-  const medical   = REFUGEE_ENTRIES.filter(e => e.tag === 'Medical Refugees')
-  const displaced = REFUGEE_ENTRIES.filter(e => e.tag === 'Displaced Refugees')
+function TimelineEntryCard({
+  entry,
+  last,
+  entryMedia,
+  onOpenMedia,
+  onViewAll,
+}: {
+  entry:      MissionEntry
+  last:       boolean
+  entryMedia: MediaItem[]
+  onOpenMedia: (item: MediaItem) => void
+  onViewAll:  () => void
+}) {
+  return (
+    <div className="relative flex gap-5 pb-10">
+      {!last && (
+        <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-black/10" />
+      )}
+      <div className="relative z-10 mt-1 shrink-0 w-6 h-6 rounded-full bg-rouge border-4 border-chalk-off shadow-sm" />
+      <div className="flex-1 bg-chalk rounded-2xl border border-black/8 shadow-sm p-5 -mt-0.5">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+          <div>
+            <span className="font-sans text-xs text-ink/40">{entry.date}</span>
+            <h3 className="font-display text-lg text-ink leading-snug mt-0.5">{entry.title}</h3>
+          </div>
+          <span className="font-sans text-xs px-2.5 py-1 rounded-full bg-rouge/8 text-rouge border border-rouge/15 shrink-0">
+            {entry.tag}
+          </span>
+        </div>
+        <p className="font-sans text-sm text-ink/55 leading-relaxed mb-4">{entry.description}</p>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-1 font-sans text-xs text-ink/40">
+            <MapPin size={11} /> {entry.location}
+          </span>
+          <span className="flex items-center gap-1.5 font-sans text-xs font-medium text-forest bg-forest/10 px-2.5 py-1 rounded-full">
+            <Users size={10} /> {entry.impact}
+          </span>
+        </div>
+        <InlineMediaStrip
+          media={entryMedia}
+          onOpen={onOpenMedia}
+          onViewAll={onViewAll}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── CampSection ───────────────────────────────────────────────────────────────
+
+function CampSection({
+  campValue,
+  intro,
+  stats,
+  entries,
+  subSections,
+  timelineMedia,
+  onOpenMedia,
+  onViewAll,
+  showDivider,
+}: {
+  campValue:     MediaCamp
+  intro:         { tag: string; title: string; body: string }
+  stats:         StatItem[]
+  entries?:      MissionEntry[]
+  subSections?:  { icon: React.ElementType; iconColor: string; bgColor: string; title: string; subtitle: string; entries: MissionEntry[] }[]
+  timelineMedia: MediaItem[]
+  onOpenMedia:   (item: MediaItem, items: MediaItem[]) => void
+  onViewAll:     () => void
+  showDivider:   boolean
+}) {
+  return (
+    <div>
+      {showDivider && <div className="border-t border-black/8 mb-14" />}
+      <SectionIntro {...intro} />
+      <StatsBar stats={stats} />
+
+      {/* Standard entries */}
+      {entries && (
+        <div className="relative max-w-2xl">
+          {entries.map((entry, i) => {
+            const em = getEntryMedia(timelineMedia, entry, campValue)
+            return (
+              <TimelineEntryCard
+                key={entry.id}
+                entry={entry}
+                last={i === entries.length - 1}
+                entryMedia={em}
+                onOpenMedia={item => onOpenMedia(item, em)}
+                onViewAll={onViewAll}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {/* Sub-section entries (refugees layout) */}
+      {subSections && subSections.map(sub => {
+        const SubIcon = sub.icon
+        return (
+          <div key={sub.title} className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`w-8 h-8 rounded-xl ${sub.bgColor} flex items-center justify-center shrink-0`}>
+                <SubIcon size={15} className={sub.iconColor} />
+              </div>
+              <div>
+                <h3 className="font-display text-xl text-ink">{sub.title}</h3>
+                <p className="font-sans text-xs text-ink/45 mt-0.5">{sub.subtitle}</p>
+              </div>
+            </div>
+            <div className="relative max-w-2xl">
+              {sub.entries.map((entry, i) => {
+                const em = getEntryMedia(timelineMedia, entry, campValue)
+                return (
+                  <TimelineEntryCard
+                    key={entry.id}
+                    entry={entry}
+                    last={i === sub.entries.length - 1}
+                    entryMedia={em}
+                    onOpenMedia={item => onOpenMedia(item, em)}
+                    onViewAll={onViewAll}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── GridCard ──────────────────────────────────────────────────────────────────
+
+function GridCard({
+  item,
+  onClick,
+}: {
+  item:    MediaItem
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group relative bg-chalk rounded-2xl border border-black/8 overflow-hidden shadow-sm hover:shadow-md transition-shadow text-left w-full cursor-pointer"
+    >
+      <div className="relative aspect-video overflow-hidden bg-black/5">
+        <img
+          src={thumb(item)}
+          alt={item.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+        {item.type === 'video' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-ink/20 group-hover:bg-ink/30 transition-colors">
+            <div className="w-12 h-12 bg-ink/60 group-hover:bg-rouge/80 rounded-full flex items-center justify-center transition-colors">
+              <Play size={18} className="text-chalk ml-1" fill="white" />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className={`font-sans text-[10px] px-2 py-0.5 rounded-full font-medium ${CAMP_BADGE[item.camp]}`}>
+            {CAMP_LABELS[item.camp]}
+          </span>
+          <span className="font-sans text-[10px] px-2 py-0.5 rounded-full bg-black/5 text-ink/50">
+            {item.category}
+          </span>
+        </div>
+        <h4 className="font-display text-base text-ink leading-snug mb-1 line-clamp-2">{item.title}</h4>
+        {item.captured_at && (
+          <p className="font-sans text-xs text-ink/40">{formatDate(item.captured_at)}</p>
+        )}
+      </div>
+    </button>
+  )
+}
+
+// ── GridView ──────────────────────────────────────────────────────────────────
+
+function GridView({
+  items,
+  hasMore,
+  loading,
+  onLoadMore,
+  onOpenMedia,
+}: {
+  items:       MediaItem[]
+  hasMore:     boolean
+  loading:     boolean
+  onLoadMore:  () => void
+  onOpenMedia: (item: MediaItem, items: MediaItem[]) => void
+}) {
+  if (!loading && items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-black/5 flex items-center justify-center mb-4">
+          <Grid3X3 size={24} className="text-ink/20" />
+        </div>
+        <p className="font-display text-xl text-ink/40 mb-1">No media yet</p>
+        <p className="font-sans text-sm text-ink/30">Media will appear here once published.</p>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <SectionIntro
-        tag="Gazan Refugees"
-        title="Supporting Palestinians Beyond Borders"
-        body="Many Palestinians have been forced to leave Gaza — for urgent medical treatment, or as refugees escaping the conflict entirely. We support these families wherever they are."
-      />
-
-      <StatsBar stats={REFUGEE_STATS} />
-
-      {/* Medical sub-section */}
-      <div className="mb-12">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 rounded-xl bg-rouge/10 flex items-center justify-center shrink-0">
-            <Heart size={15} className="text-rouge" />
-          </div>
-          <div>
-            <h3 className="font-display text-xl text-ink">Medical Refugees</h3>
-            <p className="font-sans text-xs text-ink/45 mt-0.5">Palestinians who left Gaza for medical care and need support during treatment abroad</p>
-          </div>
-        </div>
-        <div className="relative">
-          {medical.map((entry, i) => (
-            <TimelineEntry key={entry.id} entry={entry} last={i === medical.length - 1} />
-          ))}
-        </div>
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {items.map(item => (
+          <GridCard
+            key={item.id}
+            item={item}
+            onClick={() => onOpenMedia(item, items)}
+          />
+        ))}
+        {loading && items.length === 0 && (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-chalk rounded-2xl border border-black/8 overflow-hidden animate-pulse">
+              <div className="aspect-video bg-black/5" />
+              <div className="p-4 space-y-2">
+                <div className="h-3 bg-black/5 rounded w-1/3" />
+                <div className="h-4 bg-black/5 rounded w-3/4" />
+                <div className="h-3 bg-black/5 rounded w-1/2" />
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Displaced sub-section */}
-      <div>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 rounded-xl bg-forest/10 flex items-center justify-center shrink-0">
-            <Home size={15} className="text-forest" />
-          </div>
-          <div>
-            <h3 className="font-display text-xl text-ink">Displaced Refugees</h3>
-            <p className="font-sans text-xs text-ink/45 mt-0.5">Families who fled and are rebuilding lives outside Gaza — we help them stabilise</p>
+      {(hasMore || loading) && items.length > 0 && (
+        <div className="mt-10 flex justify-center">
+          <button
+            onClick={onLoadMore}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl border border-black/12 font-sans text-sm text-ink/60 hover:text-ink hover:border-black/25 hover:bg-black/3 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : null}
+            {loading ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── FilterSidebar ─────────────────────────────────────────────────────────────
+
+function FilterSidebar({
+  camp,
+  categorySlug,
+  onCampChange,
+  onCategoryChange,
+}: {
+  camp:             CampFilter
+  categorySlug:     string
+  onCampChange:     (v: CampFilter) => void
+  onCategoryChange: (slug: string) => void
+}) {
+  return (
+    <aside className="hidden lg:block w-56 shrink-0">
+      <div className="sticky top-24 space-y-7">
+
+        {/* CAMPS */}
+        <div>
+          <p className="font-sans text-[10px] text-ink/35 uppercase tracking-widest mb-3">Camps</p>
+          <div className="space-y-0.5">
+            {CAMP_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => onCampChange(value)}
+                className={`w-full text-left px-3 py-2 rounded-lg font-sans text-sm transition-colors cursor-pointer ${
+                  camp === value
+                    ? 'bg-rouge/10 text-rouge font-medium'
+                    : 'text-ink/60 hover:text-ink hover:bg-black/4'
+                }`}
+              >
+                {camp === value && (
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-rouge mr-2 mb-0.5" />
+                )}
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="relative">
-          {displaced.map((entry, i) => (
-            <TimelineEntry key={entry.id} entry={entry} last={i === displaced.length - 1} />
-          ))}
+
+        {/* CATEGORIES */}
+        <div>
+          <p className="font-sans text-[10px] text-ink/35 uppercase tracking-widest mb-3">Categories</p>
+          <div className="space-y-0.5">
+            {CATEGORY_OPTIONS.map(({ slug, label }) => (
+              <button
+                key={slug}
+                onClick={() => onCategoryChange(slug)}
+                className={`w-full text-left px-3 py-2 rounded-lg font-sans text-sm transition-colors cursor-pointer ${
+                  categorySlug === slug
+                    ? 'bg-rouge/10 text-rouge font-medium'
+                    : 'text-ink/60 hover:text-ink hover:bg-black/4'
+                }`}
+              >
+                {categorySlug === slug && (
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-rouge mr-2 mb-0.5" />
+                )}
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </>
+    </aside>
+  )
+}
+
+// ── MobileFilters ─────────────────────────────────────────────────────────────
+
+function MobileFilters({
+  camp,
+  categorySlug,
+  onCampChange,
+  onCategoryChange,
+}: {
+  camp:             CampFilter
+  categorySlug:     string
+  onCampChange:     (v: CampFilter) => void
+  onCategoryChange: (slug: string) => void
+}) {
+  return (
+    <div className="lg:hidden border-b border-black/8 bg-chalk/95 backdrop-blur">
+      {/* Camp pills */}
+      <div className="flex gap-2 overflow-x-auto px-5 py-3 scrollbar-none">
+        {CAMP_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => onCampChange(value)}
+            className={`shrink-0 px-4 py-1.5 rounded-full font-sans text-sm transition-colors cursor-pointer ${
+              camp === value
+                ? 'bg-rouge text-chalk'
+                : 'bg-black/6 text-ink/60 hover:text-ink'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Category pills */}
+      <div className="flex gap-2 overflow-x-auto px-5 py-2.5 pb-3 scrollbar-none border-t border-black/5">
+        {CATEGORY_OPTIONS.map(({ slug, label }) => (
+          <button
+            key={slug}
+            onClick={() => onCategoryChange(slug)}
+            className={`shrink-0 px-3.5 py-1 rounded-full font-sans text-xs transition-colors cursor-pointer ${
+              categorySlug === slug
+                ? 'bg-rouge/10 text-rouge border border-rouge/20 font-medium'
+                : 'bg-black/4 text-ink/55 hover:text-ink'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Timeline() {
-  const [activeTab, setActiveTab] = useState<TabKey>('south')
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const camp        = (searchParams.get('camp')     ?? 'all')      as CampFilter
+  const categorySlug = searchParams.get('category') ?? 'all'
+  const view         = (searchParams.get('view')    ?? 'timeline') as ViewMode
+  const category     = slugToCategory(categorySlug)                 as CategoryFilter
+
+  // Media for inline timeline strips (all camps, category-filtered)
+  const [timelineMedia, setTimelineMedia] = useState<MediaItem[]>([])
+
+  // Grid view state
+  const [gridItems,   setGridItems]   = useState<MediaItem[]>([])
+  const [gridPage,    setGridPage]    = useState(0)
+  const [hasMore,     setHasMore]     = useState(true)
+  const [gridLoading, setGridLoading] = useState(false)
+
+  // Shared lightbox
+  const [lightbox, setLightbox] = useState<{ item: MediaItem; items: MediaItem[] } | null>(null)
+
+  // ── URL helpers ─────────────────────────────────────────────────────────────
+
+  const setFilter = (key: string, value: string) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set(key, value)
+      return next
+    }, { replace: true })
+  }
+
+  const openGrid = (campValue?: CampFilter) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('view', 'grid')
+      if (campValue && campValue !== 'all') next.set('camp', campValue)
+      return next
+    }, { replace: true })
+  }
+
+  // ── Media fetch: timeline strips ────────────────────────────────────────────
+
+  useEffect(() => {
+    let q = supabase
+      .from('media_items')
+      .select('*')
+      .eq('is_published', true)
+      .order('captured_at', { ascending: false })
+      .limit(200)
+    if (category !== 'all') q = q.eq('category', category)
+    q.then(({ data, error }) => {
+      if (error) { console.error('[Timeline] media fetch error:', error.message); return }
+      setTimelineMedia((data as MediaItem[]) ?? [])
+    })
+  }, [category])
+
+  // ── Media fetch: grid view ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (view !== 'grid') return
+    setGridItems([])
+    setGridPage(0)
+    setHasMore(true)
+    setGridLoading(true)
+
+    const run = async () => {
+      let q = supabase
+        .from('media_items')
+        .select('*')
+        .eq('is_published', true)
+        .order('captured_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .range(0, PAGE_SIZE - 1)
+      if (camp !== 'all')     q = q.eq('camp', camp)
+      if (category !== 'all') q = q.eq('category', category)
+      const { data, error } = await q
+      if (error) { console.error('[Grid] fetch error:', error.message) }
+      else {
+        const items = (data ?? []) as MediaItem[]
+        setGridItems(items)
+        setHasMore(items.length === PAGE_SIZE)
+      }
+      setGridLoading(false)
+    }
+    run()
+  }, [camp, category, view])
+
+  const loadMore = async () => {
+    setGridLoading(true)
+    const nextPage = gridPage + 1
+    let q = supabase
+      .from('media_items')
+      .select('*')
+      .eq('is_published', true)
+      .order('captured_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .range(nextPage * PAGE_SIZE, nextPage * PAGE_SIZE + PAGE_SIZE - 1)
+    if (camp !== 'all')     q = q.eq('camp', camp)
+    if (category !== 'all') q = q.eq('category', category)
+    const { data, error } = await q
+    if (error) { console.error('[Grid] load more error:', error.message) }
+    else {
+      const items = (data ?? []) as MediaItem[]
+      setGridItems(prev => [...prev, ...items])
+      setHasMore(items.length === PAGE_SIZE)
+      setGridPage(nextPage)
+    }
+    setGridLoading(false)
+  }
+
+  // ── Sections config ─────────────────────────────────────────────────────────
+
+  const allSections = [
+    {
+      campValue: 'south_gaza' as MediaCamp,
+      intro: {
+        tag:   'South Gaza Camp',
+        title: 'Operations in South Gaza',
+        body:  'Our South Gaza camp has been active since October 2024 — providing food, clean water, and essential supplies to displaced families in Khan Younis, Rafah, and the surrounding areas.',
+      },
+      stats:   SOUTH_STATS,
+      entries: SOUTH_ENTRIES,
+    },
+    {
+      campValue: 'north_gaza' as MediaCamp,
+      intro: {
+        tag:   'North Gaza Camp',
+        title: 'Operations in North Gaza',
+        body:  'Northern Gaza faces the most severe access restrictions. Our North Gaza network operates through trusted local contacts to reach Jabalia, Beit Lahiya, and Gaza City with food, medicine, and supplies.',
+      },
+      stats:   NORTH_STATS,
+      entries: NORTH_ENTRIES,
+    },
+    {
+      campValue: 'refugees' as MediaCamp,
+      intro: {
+        tag:   'Gazan Refugees',
+        title: 'Supporting Palestinians Beyond Borders',
+        body:  'Many Palestinians have been forced to leave Gaza — for urgent medical treatment, or as refugees escaping the conflict entirely. We support these families wherever they are.',
+      },
+      stats:      REFUGEE_STATS,
+      entries:    undefined,
+      subSections: [
+        {
+          icon:      Heart,
+          iconColor: 'text-rouge',
+          bgColor:   'bg-rouge/10',
+          title:     'Medical Refugees',
+          subtitle:  'Palestinians who left Gaza for medical care and need support during treatment abroad',
+          entries:   REFUGEE_MEDICAL,
+        },
+        {
+          icon:      Home,
+          iconColor: 'text-forest',
+          bgColor:   'bg-forest/10',
+          title:     'Displaced Refugees',
+          subtitle:  'Families who fled and are rebuilding lives outside Gaza — we help them stabilise',
+          entries:   REFUGEE_DISPLACED,
+        },
+      ],
+    },
+  ]
+
+  const visibleSections = camp === 'all'
+    ? allSections
+    : allSections.filter(s => s.campValue === camp)
 
   return (
     <div className="bg-chalk-off min-h-screen">
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
       <section className="relative bg-ink overflow-hidden">
-        {/* Flag stripe */}
         <div className="h-0.5 flex">
           <div className="flex-1 bg-rouge" />
           <div className="flex-1 bg-chalk/30" />
           <div className="flex-1 bg-forest" />
         </div>
-
-        {/* Background shapes */}
         <div
           className="absolute top-0 left-0 w-1/3 h-full bg-rouge/7 pointer-events-none"
           style={{ clipPath: 'polygon(0 0, 100% 0, 60% 100%, 0 100%)' }}
         />
         <div className="absolute bottom-0 right-0 w-64 h-64 bg-forest/8 rounded-full blur-3xl pointer-events-none" />
-
         <div className="relative max-w-6xl mx-auto px-5 py-20">
           <p className="font-sans text-xs text-rouge/80 uppercase tracking-[0.2em] mb-3">Active Operations</p>
           <h1 className="font-display text-5xl md:text-6xl text-chalk leading-tight mb-4">
@@ -457,13 +1008,11 @@ export default function Timeline() {
             Active operations across Gaza and with displaced Palestinian refugees —
             documented mission by mission.
           </p>
-
-          {/* Stat badges */}
           <div className="flex flex-wrap gap-3">
             {[
-              { label: '2 Active Camps',           color: 'bg-rouge/15 border-rouge/25 text-rouge/90' },
-              { label: 'North & South Gaza',        color: 'bg-white/6 border-white/12 text-white/60'  },
-              { label: 'Refugees Supported',        color: 'bg-forest/15 border-forest/25 text-forest/90' },
+              { label: '2 Active Camps',      color: 'bg-rouge/15 border-rouge/25 text-rouge/90'   },
+              { label: 'North & South Gaza',  color: 'bg-white/6 border-white/12 text-white/60'    },
+              { label: 'Refugees Supported',  color: 'bg-forest/15 border-forest/25 text-forest/90' },
             ].map(({ label, color }) => (
               <span
                 key={label}
@@ -477,78 +1026,116 @@ export default function Timeline() {
         </div>
       </section>
 
-      {/* ── Sticky tab switcher ────────────────────────────────────────── */}
-      <div className="sticky top-16 z-40 bg-chalk/95 backdrop-blur border-b border-black/8 shadow-sm">
-        <div className="max-w-6xl mx-auto px-5">
-          <div className="flex gap-1 overflow-x-auto scrollbar-none py-1">
-            {TABS.map(({ key, label }) => (
+      {/* ── Mobile filters ─────────────────────────────────────────────── */}
+      <MobileFilters
+        camp={camp}
+        categorySlug={categorySlug}
+        onCampChange={v => setFilter('camp', v)}
+        onCategoryChange={slug => setFilter('category', slug)}
+      />
+
+      {/* ── Main layout ────────────────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-5 py-10 flex gap-10">
+
+        {/* Desktop sidebar */}
+        <FilterSidebar
+          camp={camp}
+          categorySlug={categorySlug}
+          onCampChange={v => setFilter('camp', v)}
+          onCategoryChange={slug => setFilter('category', slug)}
+        />
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+
+          {/* ── Top bar ─────────────────────────────────────────────── */}
+          <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
+
+            {/* Camp tabs (desktop) */}
+            <div className="hidden lg:flex items-center gap-1">
+              {CAMP_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setFilter('camp', value)}
+                  className={`px-4 py-2 rounded-lg font-sans text-sm font-medium transition-colors cursor-pointer ${
+                    camp === value
+                      ? 'bg-rouge text-chalk'
+                      : 'text-ink/50 hover:text-ink hover:bg-black/5'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* View toggle */}
+            <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1 ml-auto">
               <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`shrink-0 px-5 py-3 rounded-lg font-sans text-sm font-medium transition-colors min-h-[44px] ${
-                  activeTab === key
-                    ? 'bg-rouge text-chalk'
-                    : 'text-ink/50 hover:text-ink hover:bg-black/5'
+                onClick={() => setFilter('view', 'timeline')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors cursor-pointer ${
+                  view === 'timeline'
+                    ? 'bg-chalk text-ink shadow-sm'
+                    : 'text-ink/50 hover:text-ink'
                 }`}
               >
-                {label}
+                <LayoutList size={14} />
+                Timeline
               </button>
-            ))}
+              <button
+                onClick={() => setFilter('view', 'grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-sans text-sm transition-colors cursor-pointer ${
+                  view === 'grid'
+                    ? 'bg-chalk text-ink shadow-sm'
+                    : 'text-ink/50 hover:text-ink'
+                }`}
+              >
+                <Grid3X3 size={14} />
+                Grid
+              </button>
+            </div>
           </div>
+
+          {/* ── Timeline view ────────────────────────────────────────── */}
+          {view === 'timeline' && (
+            <div>
+              {visibleSections.map((section, si) => (
+                <CampSection
+                  key={section.campValue}
+                  campValue={section.campValue}
+                  intro={section.intro}
+                  stats={section.stats}
+                  entries={section.entries}
+                  subSections={section.subSections}
+                  timelineMedia={timelineMedia}
+                  onOpenMedia={(item, items) => setLightbox({ item, items })}
+                  onViewAll={() => openGrid(section.campValue)}
+                  showDivider={si > 0}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* ── Grid view ────────────────────────────────────────────── */}
+          {view === 'grid' && (
+            <GridView
+              items={gridItems}
+              hasMore={hasMore}
+              loading={gridLoading}
+              onLoadMore={loadMore}
+              onOpenMedia={(item, items) => setLightbox({ item, items })}
+            />
+          )}
         </div>
       </div>
 
-      {/* ── Tab content ───────────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-5 py-14">
-
-        {/* South Gaza */}
-        {activeTab === 'south' && (
-          <>
-            <SectionIntro
-              tag="South Gaza Camp"
-              title="Operations in South Gaza"
-              body="Our South Gaza camp has been active since October 2024 — providing food, clean water, and essential supplies to displaced families in Khan Younis, Rafah, and the surrounding areas."
-            />
-            <StatsBar stats={SOUTH_STATS} />
-            <div className="relative max-w-2xl">
-              {SOUTH_ENTRIES.map((entry, i) => (
-                <TimelineEntry key={entry.id} entry={entry} last={i === SOUTH_ENTRIES.length - 1} />
-              ))}
-            </div>
-            <div className="max-w-2xl">
-              <MediaStrip camp="south_gaza" campSlug="south_gaza" />
-            </div>
-          </>
-        )}
-
-        {/* North Gaza */}
-        {activeTab === 'north' && (
-          <>
-            <SectionIntro
-              tag="North Gaza Camp"
-              title="Operations in North Gaza"
-              body="Northern Gaza faces the most severe access restrictions. Our North Gaza network operates through trusted local contacts to reach Jabalia, Beit Lahiya, and Gaza City with food, medicine, and supplies."
-            />
-            <StatsBar stats={NORTH_STATS} />
-            <div className="relative max-w-2xl">
-              {NORTH_ENTRIES.map((entry, i) => (
-                <TimelineEntry key={entry.id} entry={entry} last={i === NORTH_ENTRIES.length - 1} />
-              ))}
-            </div>
-            <div className="max-w-2xl">
-              <MediaStrip camp="north_gaza" campSlug="north_gaza" />
-            </div>
-          </>
-        )}
-
-        {/* Refugees */}
-        {activeTab === 'refugees' && (
-          <div className="max-w-2xl">
-            <RefugeeTab />
-            <MediaStrip camp="refugees" campSlug="refugees" />
-          </div>
-        )}
-      </div>
+      {/* ── Lightbox ───────────────────────────────────────────────────── */}
+      {lightbox && (
+        <MediaLightbox
+          initialItem={lightbox.item}
+          items={lightbox.items}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   )
 }
